@@ -3,7 +3,6 @@
 import { FC, useRef, useEffect, useState, useCallback } from 'react';
 import type { BeadPattern, ViewType } from '@/types';
 import { colorToRgba } from '@/lib/utils';
-import { correctPoint } from '@/lib/pattern';
 
 interface CanvasPanelProps {
   title: string;
@@ -234,20 +233,23 @@ function renderSimulation(
   const visibleWidth = Math.ceil(pattern.width / 2);
 
   for (let y = 0; y < pattern.height; y++) {
-    for (let x = 0; x < pattern.width; x++) {
-      const corrected = correctPoint(x, y, pattern.width, shift);
+    // Brick offset based on row, same as corrected view
+    const dx = y % 2 === 1 ? zoom / 2 : 0;
 
-      if (corrected.x >= visibleWidth) continue;
+    for (let x = 0; x < pattern.width; x++) {
+      // Apply shift as horizontal rotation (wrapping around the tube)
+      const shiftedX = ((x - shift) % pattern.width + pattern.width) % pattern.width;
+
+      // Only show beads on the visible half of the tube
+      if (shiftedX >= visibleWidth) continue;
 
       const colorIndex = pattern.field[y * pattern.width + x];
       const color = pattern.colors[colorIndex] || pattern.colors[0];
 
-      const dx = corrected.y % 2 === 1 ? zoom / 2 : 0;
-
       ctx.fillStyle = colorToRgba(color);
       ctx.fillRect(
-        corrected.x * zoom + dx,
-        (pattern.height - 1 - corrected.y) * zoom,
+        shiftedX * zoom + dx,
+        (pattern.height - 1 - y) * zoom,
         zoom - 1,
         zoom - 1
       );

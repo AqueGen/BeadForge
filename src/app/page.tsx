@@ -12,12 +12,92 @@ import { DEFAULT_COLORS, type DrawingTool } from '@/types';
 
 const SAMPLE_PATTERNS = getSamplePatternList();
 
+// New Pattern Dialog component
+function NewPatternDialog({
+  isOpen,
+  onClose,
+  onCreate,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onCreate: (width: number, height: number) => void;
+}) {
+  const [width, setWidth] = useState(8);
+  const [height, setHeight] = useState(100);
+
+  if (!isOpen) return null;
+
+  const handleCreate = () => {
+    onCreate(width, height);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="w-80 rounded-lg bg-white p-6 shadow-xl">
+        <h2 className="mb-4 text-lg font-semibold">New Pattern</h2>
+
+        <div className="mb-4">
+          <label className="mb-1 block text-sm font-medium text-gray-700">
+            Width (circumference): 3-50
+          </label>
+          <input
+            type="number"
+            min={3}
+            max={50}
+            value={width}
+            onChange={(e) => setWidth(Math.min(50, Math.max(3, parseInt(e.target.value) || 3)))}
+            className="w-full rounded border px-3 py-2"
+          />
+        </div>
+
+        <div className="mb-6">
+          <label className="mb-1 block text-sm font-medium text-gray-700">
+            Height (rows): 1-1000
+          </label>
+          <input
+            type="number"
+            min={1}
+            max={1000}
+            value={height}
+            onChange={(e) => setHeight(Math.min(1000, Math.max(1, parseInt(e.target.value) || 1)))}
+            className="w-full rounded border px-3 py-2"
+          />
+        </div>
+
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="rounded border px-4 py-2 text-sm hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleCreate}
+            className="rounded bg-primary-500 px-4 py-2 text-sm text-white hover:bg-primary-600"
+          >
+            Create
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function EditorPage() {
   const { pattern, actions } = usePattern(8, 100);
   const [selectedColor, setSelectedColor] = useState(1);
   const [tool, setTool] = useState<DrawingTool>('pencil');
   const [zoom, setZoom] = useState(20);
   const [shift, setShift] = useState(0);
+  const [showNewDialog, setShowNewDialog] = useState(false);
+
+  const handleCreatePattern = useCallback(
+    (width: number, height: number) => {
+      actions.reset(width, height);
+    },
+    [actions]
+  );
 
   const handleBeadClick = useCallback(
     (x: number, y: number) => {
@@ -57,7 +137,7 @@ export default function EditorPage() {
         onMirrorV={() => actions.mirrorVertical()}
         onSave={() => actions.save()}
         onLoad={actions.load}
-        onNew={() => actions.reset()}
+        onNew={() => setShowNewDialog(true)}
         onShowStats={() => {
           const stats = actions.getStats();
           alert(
@@ -144,6 +224,13 @@ export default function EditorPage() {
           <TTSPanel pattern={pattern} />
         </aside>
       </div>
+
+      {/* New Pattern Dialog */}
+      <NewPatternDialog
+        isOpen={showNewDialog}
+        onClose={() => setShowNewDialog(false)}
+        onCreate={handleCreatePattern}
+      />
     </div>
   );
 }
