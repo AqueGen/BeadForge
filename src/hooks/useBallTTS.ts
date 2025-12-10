@@ -5,6 +5,32 @@ import type { BallPattern, TTSSettings, TTSState } from '@/types';
 import { DEFAULT_TTS_SETTINGS } from '@/types';
 import { TTSController, isTTSSupported, loadVoices } from '@/lib/tts';
 
+const TTS_SETTINGS_STORAGE_KEY = 'beadforge_tts_settings';
+
+// Helper to load TTS settings from localStorage
+function loadTTSSettingsFromStorage(): Partial<TTSSettings> | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const saved = localStorage.getItem(TTS_SETTINGS_STORAGE_KEY);
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (e) {
+    console.error('Failed to load TTS settings from localStorage:', e);
+  }
+  return null;
+}
+
+// Helper to save TTS settings to localStorage
+function saveTTSSettingsToStorage(settings: TTSSettings): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(TTS_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+  } catch (e) {
+    console.error('Failed to save TTS settings to localStorage:', e);
+  }
+}
+
 export interface UseBallTTSReturn {
   // State
   state: TTSState;
@@ -26,9 +52,14 @@ export interface UseBallTTSReturn {
 }
 
 export function useBallTTS(initialSettings?: Partial<TTSSettings>): UseBallTTSReturn {
-  const [settings, setSettings] = useState<TTSSettings>({
-    ...DEFAULT_TTS_SETTINGS,
-    ...initialSettings,
+  const [settings, setSettings] = useState<TTSSettings>(() => {
+    // Load from localStorage first, then apply initialSettings overrides
+    const savedSettings = loadTTSSettingsFromStorage();
+    return {
+      ...DEFAULT_TTS_SETTINGS,
+      ...savedSettings,
+      ...initialSettings,
+    };
   });
 
   const [state, setState] = useState<TTSState>({
@@ -149,7 +180,11 @@ export function useBallTTS(initialSettings?: Partial<TTSSettings>): UseBallTTSRe
   }, []);
 
   const updateSettings = useCallback((newSettings: Partial<TTSSettings>) => {
-    setSettings((prev) => ({ ...prev, ...newSettings }));
+    setSettings((prev) => {
+      const updated = { ...prev, ...newSettings };
+      saveTTSSettingsToStorage(updated);
+      return updated;
+    });
   }, []);
 
   return {
