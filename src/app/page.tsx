@@ -7,8 +7,8 @@ import { ColorPalette } from '@/components/editor/ColorPalette';
 import { CanvasPanel } from '@/components/editor/CanvasPanel';
 import { TTSPanel } from '@/components/tts';
 import { usePattern } from '@/hooks/usePattern';
-import { getSamplePatternList } from '@/lib/pattern';
-import { DEFAULT_COLORS, type DrawingTool } from '@/types';
+import { getSamplePatternList, getHighlightedBeads } from '@/lib/pattern';
+import { DEFAULT_COLORS, type DrawingTool, type HighlightedBeads } from '@/types';
 
 const SAMPLE_PATTERNS = getSamplePatternList();
 
@@ -91,6 +91,7 @@ export default function EditorPage() {
   const [zoom, setZoom] = useState(20);
   const [shift, setShift] = useState(0);
   const [showNewDialog, setShowNewDialog] = useState(false);
+  const [highlightedBeads, setHighlightedBeads] = useState<HighlightedBeads | null>(null);
 
   const handleCreatePattern = useCallback(
     (width: number, height: number) => {
@@ -121,6 +122,18 @@ export default function EditorPage() {
       }
     },
     [tool, selectedColor, actions]
+  );
+
+  const handleTTSStateChange = useCallback(
+    (position: number, groupCount: number, isActive: boolean) => {
+      if (isActive && position > 0 && groupCount > 0) {
+        const highlighted = getHighlightedBeads(pattern, position, groupCount);
+        setHighlightedBeads(highlighted);
+      } else {
+        setHighlightedBeads(null);
+      }
+    },
+    [pattern]
   );
 
   return (
@@ -200,6 +213,7 @@ export default function EditorPage() {
             viewType="draft"
             onBeadClick={handleBeadClick}
             onBeadDrag={handleBeadDrag}
+            highlightedBeads={highlightedBeads}
           />
 
           <CanvasPanel
@@ -221,7 +235,7 @@ export default function EditorPage() {
 
         {/* TTS Panel */}
         <aside className="w-80 border-l bg-white">
-          <TTSPanel pattern={pattern} />
+          <TTSPanel pattern={pattern} onTTSStateChange={handleTTSStateChange} />
         </aside>
       </div>
 

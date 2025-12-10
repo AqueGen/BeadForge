@@ -97,6 +97,16 @@ export interface Point {
   y: number;
 }
 
+/**
+ * Represents a range of highlighted beads for TTS visualization
+ */
+export interface HighlightedBeads {
+  /** Bead positions as (x, y) coordinates */
+  positions: Point[];
+  /** Color index of highlighted beads */
+  colorIndex: number;
+}
+
 // ============================================================
 // Calculation Types
 // ============================================================
@@ -232,6 +242,7 @@ export interface TTSState {
   isPlaying: boolean;
   isPaused: boolean;
   currentPosition: number;
+  currentGroupCount: number; // Number of beads in current group (1 for individual mode)
   totalBeads: number;
   currentColorName: string;
   isSupported: boolean;

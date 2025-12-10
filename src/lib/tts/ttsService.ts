@@ -268,7 +268,7 @@ export class TTSController {
   private currentIndex = 0;
   private isPlaying = false;
   private isPaused = false;
-  private onPositionChange?: (position: number, colorName: string) => void;
+  private onPositionChange?: (position: number, colorName: string, groupCount: number) => void;
   private onComplete?: () => void;
   private onStateChange?: (isPlaying: boolean, isPaused: boolean) => void;
   private pauseTimeout?: ReturnType<typeof setTimeout>;
@@ -304,7 +304,7 @@ export class TTSController {
    * Set event handlers
    */
   setHandlers(handlers: {
-    onPositionChange?: (position: number, colorName: string) => void;
+    onPositionChange?: (position: number, colorName: string, groupCount: number) => void;
     onComplete?: () => void;
     onStateChange?: (isPlaying: boolean, isPaused: boolean) => void;
   }): void {
@@ -361,7 +361,7 @@ export class TTSController {
     this.isPaused = false;
     this.currentIndex = 0;
     this.onStateChange?.(false, false);
-    this.onPositionChange?.(0, '');
+    this.onPositionChange?.(0, '', 0);
   }
 
   /**
@@ -376,14 +376,14 @@ export class TTSController {
       if (groupIndex >= 0) {
         this.currentIndex = groupIndex;
         const item = this.groupedItems[groupIndex];
-        this.onPositionChange?.(item.startPosition, item.colorName);
+        this.onPositionChange?.(item.startPosition, item.colorName, item.count);
       }
     } else {
       // Direct position for individual mode
       if (position >= 1 && position <= this.items.length) {
         this.currentIndex = position - 1;
         const item = this.items[this.currentIndex];
-        this.onPositionChange?.(item.position, item.colorName);
+        this.onPositionChange?.(item.position, item.colorName, 1);
       }
     }
   }
@@ -508,7 +508,8 @@ export class TTSController {
 
     const position = this.getCurrentPosition();
     const colorName = this.getCurrentColorName();
-    this.onPositionChange?.(position, colorName);
+    const groupCount = this.getCurrentGroupCount();
+    this.onPositionChange?.(position, colorName, groupCount);
 
     const voiceSource = this.settings.voiceSource || 'auto';
 
@@ -570,6 +571,16 @@ export class TTSController {
     return this.items[this.currentIndex]?.colorName || '';
   }
 
+  /**
+   * Get current group count (1 for individual mode)
+   */
+  getCurrentGroupCount(): number {
+    if (this.settings.format === 'grouped') {
+      return this.groupedItems[this.currentIndex]?.count || 0;
+    }
+    return 1;
+  }
+
   private getCurrentText(): string {
     if (this.settings.format === 'grouped') {
       const item = this.groupedItems[this.currentIndex];
@@ -595,8 +606,9 @@ export class TTSController {
     const text = this.getCurrentText();
     const position = this.getCurrentPosition();
     const colorName = this.getCurrentColorName();
+    const groupCount = this.getCurrentGroupCount();
 
-    this.onPositionChange?.(position, colorName);
+    this.onPositionChange?.(position, colorName, groupCount);
 
     // Handle auto mode with next after playback
     const handlePlaybackComplete = () => {

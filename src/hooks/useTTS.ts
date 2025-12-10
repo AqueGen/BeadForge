@@ -35,6 +35,7 @@ export function useTTS(initialSettings?: Partial<TTSSettings>): UseTTSReturn {
     isPlaying: false,
     isPaused: false,
     currentPosition: 0,
+    currentGroupCount: 0,
     totalBeads: 0,
     currentColorName: '',
     isSupported: false,
@@ -66,10 +67,11 @@ export function useTTS(initialSettings?: Partial<TTSSettings>): UseTTSReturn {
     }
 
     controllerRef.current.setHandlers({
-      onPositionChange: (position, colorName) => {
+      onPositionChange: (position, colorName, groupCount) => {
         setState((prev) => ({
           ...prev,
           currentPosition: position,
+          currentGroupCount: groupCount,
           currentColorName: colorName,
         }));
       },
@@ -116,6 +118,7 @@ export function useTTS(initialSettings?: Partial<TTSSettings>): UseTTSReturn {
       ...prev,
       totalBeads: controllerRef.current!.getTotalBeads(),
       currentPosition: 0,
+      currentGroupCount: 0,
       currentColorName: '',
     }));
   }, [settings]);

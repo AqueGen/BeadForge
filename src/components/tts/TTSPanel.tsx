@@ -16,9 +16,10 @@ import { useTTS } from '@/hooks';
 interface TTSPanelProps {
   pattern: BeadPattern;
   className?: string;
+  onTTSStateChange?: (position: number, groupCount: number, isPlaying: boolean) => void;
 }
 
-export function TTSPanel({ pattern, className = '' }: TTSPanelProps) {
+export function TTSPanel({ pattern, className = '', onTTSStateChange }: TTSPanelProps) {
   const {
     state,
     settings,
@@ -54,6 +55,11 @@ export function TTSPanel({ pattern, className = '' }: TTSPanelProps) {
     };
     loadVoicesInfo();
   }, []);
+
+  // Notify parent about TTS state changes for highlighting
+  useEffect(() => {
+    onTTSStateChange?.(state.currentPosition, state.currentGroupCount, state.isPlaying || state.isPaused);
+  }, [state.currentPosition, state.currentGroupCount, state.isPlaying, state.isPaused, onTTSStateChange]);
 
   // Initialize with pattern
   useEffect(() => {

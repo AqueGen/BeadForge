@@ -1,4 +1,4 @@
-import type { BeadPattern, Point, BeadRun, PatternStats } from '@/types';
+import type { BeadPattern, Point, BeadRun, PatternStats, HighlightedBeads } from '@/types';
 import { getUsedHeight } from './pattern';
 
 /**
@@ -150,4 +150,61 @@ export function getPatternStats(pattern: BeadPattern): PatternStats {
     estimatedWeightGrams: calculateWeight(pattern),
     beadCounts,
   };
+}
+
+/**
+ * Convert TTS stringing position (1-based) to grid coordinates (x, y)
+ * Stringing order is reverse: from bottom-right to top-left
+ * y goes from usedHeight-1 to 0, x goes from width-1 to 0
+ */
+export function positionToCoordinates(
+  position: number,
+  width: number,
+  usedHeight: number
+): Point | null {
+  if (position < 1 || position > width * usedHeight) {
+    return null;
+  }
+
+  const zeroBasedPos = position - 1;
+  const y = usedHeight - 1 - Math.floor(zeroBasedPos / width);
+  const x = width - 1 - (zeroBasedPos % width);
+
+  return { x, y };
+}
+
+/**
+ * Get highlighted beads for TTS visualization
+ * Returns array of coordinates for the beads in the current group
+ */
+export function getHighlightedBeads(
+  pattern: BeadPattern,
+  startPosition: number,
+  count: number
+): HighlightedBeads | null {
+  const usedHeight = getUsedHeight(pattern);
+  if (usedHeight === 0 || startPosition < 1) {
+    return null;
+  }
+
+  const positions: Point[] = [];
+  let colorIndex = 0;
+
+  for (let i = 0; i < count; i++) {
+    const pos = startPosition + i;
+    const coord = positionToCoordinates(pos, pattern.width, usedHeight);
+    if (coord) {
+      positions.push(coord);
+      // Get color index from first valid position
+      if (i === 0) {
+        colorIndex = pattern.field[coord.y * pattern.width + coord.x];
+      }
+    }
+  }
+
+  if (positions.length === 0) {
+    return null;
+  }
+
+  return { positions, colorIndex };
 }

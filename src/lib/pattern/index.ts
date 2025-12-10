@@ -23,6 +23,8 @@ export {
   calculateLength,
   calculateWeight,
   getPatternStats,
+  positionToCoordinates,
+  getHighlightedBeads,
 } from './calculations';
 
 // Drawing tools

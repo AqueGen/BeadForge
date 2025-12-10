@@ -1,7 +1,7 @@
 'use client';
 
 import { FC, useRef, useEffect, useState, useCallback } from 'react';
-import type { BeadPattern, ViewType } from '@/types';
+import type { BeadPattern, ViewType, HighlightedBeads } from '@/types';
 import { colorToRgba } from '@/lib/utils';
 
 interface CanvasPanelProps {
@@ -13,6 +13,7 @@ interface CanvasPanelProps {
   onShiftChange?: (shift: number) => void;
   onBeadClick?: (x: number, y: number) => void;
   onBeadDrag?: (x: number, y: number) => void;
+  highlightedBeads?: HighlightedBeads | null;
 }
 
 export const CanvasPanel: FC<CanvasPanelProps> = ({
@@ -24,6 +25,7 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
   onShiftChange,
   onBeadClick,
   onBeadDrag,
+  highlightedBeads,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -62,12 +64,16 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
     // Render based on view type
     if (viewType === 'draft') {
       renderDraft(ctx, pattern, zoom);
+      // Draw highlights for TTS on draft view only
+      if (highlightedBeads && highlightedBeads.positions.length > 0) {
+        renderHighlights(ctx, highlightedBeads, pattern.height, zoom);
+      }
     } else if (viewType === 'corrected') {
       renderCorrected(ctx, pattern, zoom);
     } else {
       renderSimulation(ctx, pattern, zoom, shift);
     }
-  }, [pattern, zoom, viewType, shift]);
+  }, [pattern, zoom, viewType, shift, highlightedBeads]);
 
   const getGridPosition = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -254,5 +260,31 @@ function renderSimulation(
         zoom - 1
       );
     }
+  }
+}
+
+function renderHighlights(
+  ctx: CanvasRenderingContext2D,
+  highlightedBeads: HighlightedBeads,
+  patternHeight: number,
+  zoom: number
+) {
+  ctx.strokeStyle = '#ff0000';
+  ctx.lineWidth = 3;
+
+  for (const pos of highlightedBeads.positions) {
+    const screenX = pos.x * zoom;
+    const screenY = (patternHeight - 1 - pos.y) * zoom;
+
+    // Draw highlight border
+    ctx.strokeRect(screenX - 1, screenY - 1, zoom + 1, zoom + 1);
+  }
+
+  // Draw a filled semi-transparent overlay for better visibility
+  ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+  for (const pos of highlightedBeads.positions) {
+    const screenX = pos.x * zoom;
+    const screenY = (patternHeight - 1 - pos.y) * zoom;
+    ctx.fillRect(screenX, screenY, zoom - 1, zoom - 1);
   }
 }
