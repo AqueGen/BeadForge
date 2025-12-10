@@ -7,7 +7,10 @@ import { ColorPalette } from '@/components/editor/ColorPalette';
 import { CanvasPanel } from '@/components/editor/CanvasPanel';
 import { TTSPanel } from '@/components/tts';
 import { usePattern } from '@/hooks/usePattern';
-import type { DrawingTool } from '@/types';
+import { getSamplePatternList } from '@/lib/pattern';
+import { DEFAULT_COLORS, type DrawingTool } from '@/types';
+
+const SAMPLE_PATTERNS = getSamplePatternList();
 
 export default function EditorPage() {
   const { pattern, actions } = usePattern(8, 100);
@@ -70,10 +73,29 @@ export default function EditorPage() {
             Colors
           </h3>
           <ColorPalette
-            colors={pattern.colors}
+            colors={DEFAULT_COLORS}
             selectedColor={selectedColor}
             onColorSelect={setSelectedColor}
           />
+
+          {/* Sample Patterns */}
+          <div className="mt-6 border-t pt-4">
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+              Sample Patterns
+            </h3>
+            <div className="space-y-1">
+              {SAMPLE_PATTERNS.map((sample) => (
+                <button
+                  key={sample.id}
+                  onClick={() => actions.loadSample(sample.id)}
+                  className="w-full text-left px-2 py-1 text-xs rounded hover:bg-gray-100 transition-colors"
+                  title={sample.description}
+                >
+                  {sample.name}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div className="mt-6 border-t pt-4">
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
@@ -84,14 +106,9 @@ export default function EditorPage() {
             </p>
             <p className="text-xs text-gray-600">Tool: {tool}</p>
             <p className="text-xs text-gray-600">
-              Color: {pattern.colors[selectedColor]?.name || `#${selectedColor}`}
+              Color: {DEFAULT_COLORS[selectedColor]?.name || `#${selectedColor}`}
             </p>
           </div>
-        </aside>
-
-        {/* TTS Panel - Right Sidebar */}
-        <aside className="w-80 border-l bg-white">
-          <TTSPanel pattern={pattern} />
         </aside>
 
         {/* Canvas Area */}
@@ -121,6 +138,11 @@ export default function EditorPage() {
             onShiftChange={setShift}
           />
         </main>
+
+        {/* TTS Panel */}
+        <aside className="w-80 border-l bg-white">
+          <TTSPanel pattern={pattern} />
+        </aside>
       </div>
     </div>
   );

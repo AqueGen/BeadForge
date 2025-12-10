@@ -34,6 +34,23 @@ export function getVoicesForLanguage(language: TTSLanguage): SpeechSynthesisVoic
 }
 
 /**
+ * Voice name patterns for gender detection
+ * Based on common TTS voice naming conventions
+ */
+const VOICE_GENDER_PATTERNS: Record<TTSVoiceGender, Record<TTSLanguage, string[]>> = {
+  female: {
+    ru: ['irina', 'anna', 'maria', 'elena', 'natasha', 'milena', 'алёна', 'ирина', 'анна', 'мария', 'елена', 'наташа'],
+    uk: ['kateryna', 'oksana', 'lesya', 'natalia', 'катерина', 'оксана', 'леся', 'наталія', 'polina'],
+    en: ['zira', 'susan', 'linda', 'hazel', 'samantha', 'karen', 'moira', 'fiona', 'victoria', 'female'],
+  },
+  male: {
+    ru: ['pavel', 'dmitry', 'maxim', 'boris', 'andrey', 'павел', 'дмитрий', 'максим', 'борис', 'андрей'],
+    uk: ['orest', 'mykola', 'ostap', 'bogdan', 'орест', 'микола', 'остап', 'богдан'],
+    en: ['david', 'mark', 'james', 'george', 'richard', 'daniel', 'male', 'guy'],
+  },
+};
+
+/**
  * Select best voice based on language and gender preference
  */
 export function selectVoice(
@@ -43,15 +60,30 @@ export function selectVoice(
   const voices = getVoicesForLanguage(language);
   if (voices.length === 0) return null;
 
-  // Try to find voice matching gender (heuristic based on name)
-  const genderKeywords =
-    gender === 'female'
-      ? ['female', 'woman', 'anna', 'maria', 'elena', 'oksana', 'natasha', 'алёна', 'катерина']
-      : ['male', 'man', 'pavel', 'dmitry', 'maxim', 'андрей', 'олег'];
+  // Language-specific keywords
+  const primaryKeywords = VOICE_GENDER_PATTERNS[gender][language] || [];
 
-  const matchingVoice = voices.find((voice) =>
-    genderKeywords.some((kw) => voice.name.toLowerCase().includes(kw))
+  // Try to find voice matching gender with language-specific keywords
+  let matchingVoice = voices.find((voice) =>
+    primaryKeywords.some((kw) => voice.name.toLowerCase().includes(kw.toLowerCase()))
   );
+
+  // If not found, try with generic gender keywords
+  if (!matchingVoice) {
+    const genericKeywords = gender === 'female'
+      ? ['female', 'woman', 'girl']
+      : ['male', 'man'];
+
+    matchingVoice = voices.find((voice) =>
+      genericKeywords.some((kw) => voice.name.toLowerCase().includes(kw))
+    );
+  }
+
+  // Log available voices for debugging
+  if (typeof console !== 'undefined' && voices.length > 0) {
+    console.log(`[TTS] Available ${language} voices:`, voices.map(v => v.name).join(', '));
+    console.log(`[TTS] Selected voice:`, matchingVoice?.name || voices[0]?.name || 'none');
+  }
 
   return matchingVoice || voices[0];
 }
@@ -434,6 +466,30 @@ export class TTSController {
 
     window.speechSynthesis.speak(utterance);
   }
+}
+
+/**
+ * Get available voices count by language for UI display
+ */
+export function getAvailableVoicesInfo(): Record<TTSLanguage, { count: number; names: string[] }> {
+  const languages: TTSLanguage[] = ['ru', 'uk', 'en'];
+  const result: Record<TTSLanguage, { count: number; names: string[] }> = {
+    ru: { count: 0, names: [] },
+    uk: { count: 0, names: [] },
+    en: { count: 0, names: [] },
+  };
+
+  if (!isTTSSupported()) return result;
+
+  for (const lang of languages) {
+    const voices = getVoicesForLanguage(lang);
+    result[lang] = {
+      count: voices.length,
+      names: voices.map(v => v.name),
+    };
+  }
+
+  return result;
 }
 
 /**

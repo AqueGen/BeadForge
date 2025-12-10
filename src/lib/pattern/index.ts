@@ -34,3 +34,10 @@ export {
   pasteSelection,
   isInSelection,
 } from './drawing';
+
+// Sample patterns (temporary until DB)
+export {
+  getSamplePatternList,
+  getSamplePattern,
+  type SamplePatternInfo,
+} from './samplePatterns';

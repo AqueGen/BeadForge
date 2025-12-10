@@ -11,6 +11,7 @@ import {
   patternToDto,
   dtoToPattern,
   getPatternStats,
+  getSamplePattern,
 } from '@/lib/pattern';
 import { floodFill as floodFillFn } from '@/lib/pattern';
 
@@ -24,6 +25,7 @@ export interface UsePatternReturn {
     mirrorVertical: () => void;
     save: () => void;
     load: (file: File) => Promise<void>;
+    loadSample: (sampleId: string) => void;
     reset: (width?: number, height?: number) => void;
     getStats: () => PatternStats;
   };
@@ -79,6 +81,13 @@ export function usePattern(
     setPattern(loaded);
   }, []);
 
+  const loadSample = useCallback((sampleId: string) => {
+    const sample = getSamplePattern(sampleId);
+    if (sample) {
+      setPattern(sample);
+    }
+  }, []);
+
   const reset = useCallback((width: number = 8, height: number = 100) => {
     setPattern(createPattern(width, height));
   }, []);
@@ -96,10 +105,11 @@ export function usePattern(
       mirrorVertical: mirrorV,
       save,
       load,
+      loadSample,
       reset,
       getStats,
     }),
-    [setBead, floodFill, clear, mirrorH, mirrorV, save, load, reset, getStats]
+    [setBead, floodFill, clear, mirrorH, mirrorV, save, load, loadSample, reset, getStats]
   );
 
   return { pattern, actions };
