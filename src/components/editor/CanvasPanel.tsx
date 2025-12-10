@@ -14,6 +14,7 @@ interface CanvasPanelProps {
   onBeadClick?: (x: number, y: number) => void;
   onBeadDrag?: (x: number, y: number) => void;
   highlightedBeads?: HighlightedBeads | null;
+  completedBeads?: number;  // Number of beads completed (for dimming)
 }
 
 export const CanvasPanel: FC<CanvasPanelProps> = ({
@@ -26,6 +27,7 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
   onBeadClick,
   onBeadDrag,
   highlightedBeads,
+  completedBeads = 0,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -64,6 +66,10 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
     // Render based on view type
     if (viewType === 'draft') {
       renderDraft(ctx, pattern, zoom);
+      // Draw dimmed overlay for completed beads
+      if (completedBeads > 0) {
+        renderCompletedOverlay(ctx, pattern, zoom, completedBeads);
+      }
       // Draw highlights for TTS on draft view only
       if (highlightedBeads && highlightedBeads.positions.length > 0) {
         renderHighlights(ctx, highlightedBeads, pattern.height, zoom);
@@ -73,7 +79,7 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
     } else {
       renderSimulation(ctx, pattern, zoom, shift);
     }
-  }, [pattern, zoom, viewType, shift, highlightedBeads]);
+  }, [pattern, zoom, viewType, shift, highlightedBeads, completedBeads]);
 
   const getGridPosition = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -285,6 +291,34 @@ function renderHighlights(
   for (const pos of highlightedBeads.positions) {
     const screenX = pos.x * zoom;
     const screenY = (patternHeight - 1 - pos.y) * zoom;
+    ctx.fillRect(screenX, screenY, zoom - 1, zoom - 1);
+  }
+}
+
+/**
+ * Render dimming overlay for completed beads
+ * Reading order: bottom-to-top (y=0 is bottom), left-to-right
+ */
+function renderCompletedOverlay(
+  ctx: CanvasRenderingContext2D,
+  pattern: BeadPattern,
+  zoom: number,
+  completedBeads: number
+) {
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';  // Semi-transparent dark overlay
+
+  for (let pos = 1; pos <= completedBeads; pos++) {
+    const zeroBasedPos = pos - 1;
+    const y = Math.floor(zeroBasedPos / pattern.width);
+    const x = zeroBasedPos % pattern.width;
+
+    // Skip if out of bounds
+    if (y >= pattern.height || x >= pattern.width) break;
+
+    // Convert to screen coordinates (y=0 is visual bottom)
+    const screenX = x * zoom;
+    const screenY = (pattern.height - 1 - y) * zoom;
+
     ctx.fillRect(screenX, screenY, zoom - 1, zoom - 1);
   }
 }

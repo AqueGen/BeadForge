@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useCallback, useState, useRef } from 'react';
 import type { BeadPattern, TTSLanguage, TTSSpeed, TTSMode, TTSFormat, TTSVoiceSource } from '@/types';
 import {
   UI_TRANSLATIONS,
@@ -9,7 +9,10 @@ import {
   loadVoices,
   getAvailableAudioVoicesInfo,
   getAudioVoicesForLanguage,
-  getVoicesForLanguage,
+  generatePatternId,
+  getProgress,
+  saveProgress,
+  deleteProgress,
 } from '@/lib/tts';
 import { useTTS } from '@/hooks';
 
@@ -17,9 +20,21 @@ interface TTSPanelProps {
   pattern: BeadPattern;
   className?: string;
   onTTSStateChange?: (position: number, groupCount: number, isPlaying: boolean) => void;
+  onCompletedBeadsChange?: (completedBeads: number) => void;
+  onNavigationModeChange?: (enabled: boolean) => void;
+  navigateToPosition?: number | null;
+  onNavigateComplete?: () => void;
 }
 
-export function TTSPanel({ pattern, className = '', onTTSStateChange }: TTSPanelProps) {
+export function TTSPanel({
+  pattern,
+  className = '',
+  onTTSStateChange,
+  onCompletedBeadsChange,
+  onNavigationModeChange,
+  navigateToPosition,
+  onNavigateComplete,
+}: TTSPanelProps) {
   const {
     state,
     settings,
@@ -43,6 +58,12 @@ export function TTSPanel({ pattern, className = '', onTTSStateChange }: TTSPanel
   // Built-in audio voices (pre-recorded)
   const [audioVoices] = useState(() => getAvailableAudioVoicesInfo());
 
+  // Progress tracking
+  const [completedBeads, setCompletedBeads] = useState(0);
+  const [navigationMode, setNavigationMode] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const patternIdRef = useRef<string>('');
+
   const t = UI_TRANSLATIONS[settings.language];
   const systemVoiceCount = systemVoices[settings.language]?.count || 0;
   const audioVoiceCount = audioVoices[settings.language]?.count || 0;
@@ -65,6 +86,59 @@ export function TTSPanel({ pattern, className = '', onTTSStateChange }: TTSPanel
   useEffect(() => {
     initializeWithPattern(pattern);
   }, [pattern, initializeWithPattern]);
+
+  // Load saved progress when pattern changes
+  useEffect(() => {
+    const patternId = generatePatternId(pattern);
+    patternIdRef.current = patternId;
+
+    const savedProgress = getProgress(patternId);
+    if (savedProgress) {
+      setCompletedBeads(savedProgress.completedBeads);
+      onCompletedBeadsChange?.(savedProgress.completedBeads);
+      // Restore position if we have saved progress
+      if (savedProgress.position > 1) {
+        goToPosition(savedProgress.position);
+      }
+    } else {
+      setCompletedBeads(0);
+      onCompletedBeadsChange?.(0);
+    }
+  }, [pattern, goToPosition, onCompletedBeadsChange]);
+
+  // Save progress on pause
+  useEffect(() => {
+    if (state.isPaused && state.currentPosition > 0) {
+      const completed = state.currentPosition - 1;
+      setCompletedBeads(completed);
+      onCompletedBeadsChange?.(completed);
+      saveProgress(patternIdRef.current, state.currentPosition, completed);
+    }
+  }, [state.isPaused, state.currentPosition, onCompletedBeadsChange]);
+
+  // Update completed beads during playback (every position change)
+  useEffect(() => {
+    if (state.isPlaying && state.currentPosition > 0) {
+      const completed = state.currentPosition - 1;
+      if (completed !== completedBeads) {
+        setCompletedBeads(completed);
+        onCompletedBeadsChange?.(completed);
+      }
+    }
+  }, [state.isPlaying, state.currentPosition, completedBeads, onCompletedBeadsChange]);
+
+  // Notify parent about navigation mode changes
+  useEffect(() => {
+    onNavigationModeChange?.(navigationMode);
+  }, [navigationMode, onNavigationModeChange]);
+
+  // Handle navigation from bead click
+  useEffect(() => {
+    if (navigateToPosition !== null && navigateToPosition !== undefined && navigateToPosition > 0) {
+      goToPosition(navigateToPosition);
+      onNavigateComplete?.();
+    }
+  }, [navigateToPosition, goToPosition, onNavigateComplete]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -111,6 +185,28 @@ export function TTSPanel({ pattern, className = '', onTTSStateChange }: TTSPanel
     },
     [goToPosition]
   );
+
+  // Toggle navigation mode
+  const handleNavigationToggle = useCallback(() => {
+    setNavigationMode((prev) => !prev);
+  }, []);
+
+  // Reset progress handlers
+  const handleResetClick = useCallback(() => {
+    setShowResetConfirm(true);
+  }, []);
+
+  const handleResetConfirm = useCallback(() => {
+    deleteProgress(patternIdRef.current);
+    setCompletedBeads(0);
+    onCompletedBeadsChange?.(0);
+    goToPosition(1);
+    setShowResetConfirm(false);
+  }, [goToPosition, onCompletedBeadsChange]);
+
+  const handleResetCancel = useCallback(() => {
+    setShowResetConfirm(false);
+  }, []);
 
   if (!state.isSupported) {
     return (
@@ -224,6 +320,89 @@ export function TTSPanel({ pattern, className = '', onTTSStateChange }: TTSPanel
             onChange={handlePositionChange}
             className="w-20 px-2 py-1 border rounded text-center text-sm"
           />
+        </div>
+
+        {/* Progress info and controls */}
+        <div className="mt-3 pt-3 border-t">
+          {/* Completed beads info */}
+          <div className="flex items-center justify-between text-sm mb-2">
+            <span className="text-gray-500">
+              {settings.language === 'uk' ? 'Завершено:' : settings.language === 'ru' ? 'Завершено:' : 'Completed:'}
+            </span>
+            <span className="font-mono font-medium text-green-600">
+              {completedBeads} / {state.totalBeads}
+            </span>
+          </div>
+
+          {/* Navigation mode toggle */}
+          <div className="flex items-center gap-2 mb-2">
+            <button
+              onClick={handleNavigationToggle}
+              className={`flex-1 px-3 py-2 text-sm rounded border transition-colors ${
+                navigationMode
+                  ? 'bg-blue-500 text-white border-blue-500'
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              {settings.language === 'uk'
+                ? (navigationMode ? '🎯 Режим навігації ВКЛ' : '🎯 Режим навігації')
+                : settings.language === 'ru'
+                  ? (navigationMode ? '🎯 Режим навигации ВКЛ' : '🎯 Режим навигации')
+                  : (navigationMode ? '🎯 Navigation ON' : '🎯 Navigation Mode')}
+            </button>
+          </div>
+
+          {/* Navigation mode hint */}
+          {navigationMode && (
+            <p className="text-xs text-blue-600 mb-2">
+              {settings.language === 'uk'
+                ? 'Натисніть на бусину на схемі, щоб перейти до неї'
+                : settings.language === 'ru'
+                  ? 'Нажмите на бусину на схеме, чтобы перейти к ней'
+                  : 'Click on a bead in the pattern to jump to it'}
+            </p>
+          )}
+
+          {/* Reset progress button */}
+          {completedBeads > 0 && !showResetConfirm && (
+            <button
+              onClick={handleResetClick}
+              className="w-full px-3 py-2 text-sm rounded border border-red-300 text-red-600 hover:bg-red-50 transition-colors"
+            >
+              {settings.language === 'uk'
+                ? '🔄 Скинути прогрес'
+                : settings.language === 'ru'
+                  ? '🔄 Сбросить прогресс'
+                  : '🔄 Reset Progress'}
+            </button>
+          )}
+
+          {/* Reset confirmation */}
+          {showResetConfirm && (
+            <div className="p-2 bg-red-50 border border-red-200 rounded">
+              <p className="text-sm text-red-700 mb-2">
+                {settings.language === 'uk'
+                  ? 'Ви впевнені? Весь прогрес буде втрачено.'
+                  : settings.language === 'ru'
+                    ? 'Вы уверены? Весь прогресс будет потерян.'
+                    : 'Are you sure? All progress will be lost.'}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleResetConfirm}
+                  className="flex-1 px-3 py-1 text-sm rounded bg-red-500 text-white hover:bg-red-600"
+                >
+                  {settings.language === 'uk' ? 'Так, скинути' : settings.language === 'ru' ? 'Да, сбросить' : 'Yes, reset'}
+                </button>
+                <button
+                  onClick={handleResetCancel}
+                  className="flex-1 px-3 py-1 text-sm rounded border border-gray-300 hover:bg-gray-50"
+                >
+                  {settings.language === 'uk' ? 'Скасувати' : settings.language === 'ru' ? 'Отмена' : 'Cancel'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

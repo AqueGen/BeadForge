@@ -24,6 +24,7 @@ export {
   calculateWeight,
   getPatternStats,
   positionToCoordinates,
+  coordinatesToPosition,
   getHighlightedBeads,
 } from './calculations';
 

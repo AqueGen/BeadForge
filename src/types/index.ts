@@ -323,3 +323,26 @@ export interface AudioTTSState {
   availableVoices: AudioVoiceConfig[];
   currentVoice?: AudioVoiceConfig;
 }
+
+// ============================================================
+// TTS Progress & Checkpoint Types
+// ============================================================
+
+/**
+ * TTS reading progress for a pattern
+ * Used for checkpoints, resume, and visual highlighting
+ */
+export interface TTSProgress {
+  patternId: string;           // Unique pattern identifier
+  position: number;            // Current bead position (1-based)
+  completedBeads: number;      // Total beads completed (for dimming)
+  lastUpdated: number;         // Timestamp for cleanup/validation
+}
+
+/**
+ * Navigation mode state for TTS panel
+ */
+export interface TTSNavigationMode {
+  enabled: boolean;            // Is navigation mode active
+  selectedPosition: number | null;  // Position selected by user click
+}

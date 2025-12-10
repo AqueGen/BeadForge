@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
+import { coordinatesToPosition } from '@/lib/pattern';
 import { Header } from '@/components/layout/Header';
 import { Toolbar } from '@/components/editor/Toolbar';
 import { ColorPalette } from '@/components/editor/ColorPalette';
@@ -92,6 +93,9 @@ export default function EditorPage() {
   const [shift, setShift] = useState(0);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [highlightedBeads, setHighlightedBeads] = useState<HighlightedBeads | null>(null);
+  const [completedBeads, setCompletedBeads] = useState(0);
+  const [ttsNavigationMode, setTtsNavigationMode] = useState(false);
+  const [ttsNavigateTarget, setTtsNavigateTarget] = useState<number | null>(null);
 
   const handleCreatePattern = useCallback(
     (width: number, height: number) => {
@@ -102,6 +106,15 @@ export default function EditorPage() {
 
   const handleBeadClick = useCallback(
     (x: number, y: number) => {
+      // Handle TTS navigation mode
+      if (ttsNavigationMode) {
+        const position = coordinatesToPosition(pattern, x, y);
+        if (position !== null) {
+          setTtsNavigateTarget(position);
+        }
+        return;
+      }
+
       if (tool === 'pencil') {
         actions.setBead(x, y, selectedColor);
       } else if (tool === 'fill') {
@@ -112,7 +125,7 @@ export default function EditorPage() {
         setTool('pencil');
       }
     },
-    [tool, selectedColor, actions, pattern]
+    [tool, selectedColor, actions, pattern, ttsNavigationMode]
   );
 
   const handleBeadDrag = useCallback(
@@ -214,6 +227,7 @@ export default function EditorPage() {
             onBeadClick={handleBeadClick}
             onBeadDrag={handleBeadDrag}
             highlightedBeads={highlightedBeads}
+            completedBeads={completedBeads}
           />
 
           <CanvasPanel
@@ -235,7 +249,14 @@ export default function EditorPage() {
 
         {/* TTS Panel */}
         <aside className="w-80 border-l bg-white">
-          <TTSPanel pattern={pattern} onTTSStateChange={handleTTSStateChange} />
+          <TTSPanel
+            pattern={pattern}
+            onTTSStateChange={handleTTSStateChange}
+            onCompletedBeadsChange={setCompletedBeads}
+            onNavigationModeChange={setTtsNavigationMode}
+            navigateToPosition={ttsNavigateTarget}
+            onNavigateComplete={() => setTtsNavigateTarget(null)}
+          />
         </aside>
       </div>
 

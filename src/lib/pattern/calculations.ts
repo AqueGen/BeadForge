@@ -174,6 +174,26 @@ export function positionToCoordinates(
 }
 
 /**
+ * Convert coordinates (x, y) to TTS reading position (1-based)
+ * Inverse of positionToCoordinates
+ * Reading order: bottom to top (y=0 is visual bottom), left to right
+ */
+export function coordinatesToPosition(
+  pattern: BeadPattern,
+  x: number,
+  y: number
+): number | null {
+  const usedHeight = getUsedHeight(pattern);
+
+  if (usedHeight === 0 || x < 0 || x >= pattern.width || y < 0 || y >= usedHeight) {
+    return null;
+  }
+
+  // Position = y * width + x + 1 (1-based)
+  return y * pattern.width + x + 1;
+}
+
+/**
  * Get highlighted beads for TTS visualization
  * Returns array of coordinates for the beads in the current group
  */
