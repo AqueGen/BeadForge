@@ -1,8 +1,16 @@
 'use client';
 
 import React, { useEffect, useCallback, useState } from 'react';
-import type { BeadPattern, TTSLanguage, TTSSpeed, TTSMode, TTSFormat } from '@/types';
-import { UI_TRANSLATIONS, getAvailableLanguages, getAvailableVoicesInfo, loadVoices } from '@/lib/tts';
+import type { BeadPattern, TTSLanguage, TTSSpeed, TTSMode, TTSFormat, TTSVoiceSource } from '@/types';
+import {
+  UI_TRANSLATIONS,
+  getAvailableLanguages,
+  getAvailableVoicesInfo,
+  loadVoices,
+  getAvailableAudioVoicesInfo,
+  getAudioVoicesForLanguage,
+  getVoicesForLanguage,
+} from '@/lib/tts';
 import { useTTS } from '@/hooks';
 
 interface TTSPanelProps {
@@ -24,20 +32,25 @@ export function TTSPanel({ pattern, className = '' }: TTSPanelProps) {
     initializeWithPattern,
   } = useTTS();
 
-  const [voicesInfo, setVoicesInfo] = useState<Record<TTSLanguage, { count: number; names: string[] }>>({
+  // System voices (Windows/Mac TTS)
+  const [systemVoices, setSystemVoices] = useState<Record<TTSLanguage, { count: number; names: string[] }>>({
     ru: { count: 0, names: [] },
     uk: { count: 0, names: [] },
     en: { count: 0, names: [] },
   });
 
-  const t = UI_TRANSLATIONS[settings.language];
-  const currentVoiceCount = voicesInfo[settings.language]?.count || 0;
+  // Built-in audio voices (pre-recorded)
+  const [audioVoices] = useState(() => getAvailableAudioVoicesInfo());
 
-  // Load voices info
+  const t = UI_TRANSLATIONS[settings.language];
+  const systemVoiceCount = systemVoices[settings.language]?.count || 0;
+  const audioVoiceCount = audioVoices[settings.language]?.count || 0;
+
+  // Load system voices info
   useEffect(() => {
     const loadVoicesInfo = async () => {
       await loadVoices();
-      setVoicesInfo(getAvailableVoicesInfo());
+      setSystemVoices(getAvailableVoicesInfo());
     };
     loadVoicesInfo();
   }, []);
@@ -246,22 +259,56 @@ export function TTSPanel({ pattern, className = '' }: TTSPanelProps) {
           >
             {getAvailableLanguages().map((lang) => (
               <option key={lang.code} value={lang.code}>
-                {lang.nativeName} ({voicesInfo[lang.code]?.count || 0})
+                {lang.nativeName}
               </option>
             ))}
           </select>
         </div>
 
-        {/* Voice availability warning */}
-        {currentVoiceCount === 0 && (
-          <div className="p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-700">
-            ⚠️ {settings.language === 'uk'
-              ? 'Українські голоси не знайдено. Встановіть у Windows Settings → Time & Language → Speech'
-              : settings.language === 'ru'
-              ? 'Русские голоса не найдены. Установите в Windows Settings → Time & Language → Speech'
-              : 'No voices found for this language. Install in Windows Settings → Time & Language → Speech'}
-          </div>
-        )}
+        {/* Voice Source */}
+        <div className="flex items-center justify-between">
+          <label className="text-sm font-medium text-gray-700">
+            {settings.language === 'uk' ? 'Джерело голосу' : settings.language === 'ru' ? 'Источник голоса' : 'Voice Source'}
+          </label>
+          <select
+            value={settings.voiceSource || 'auto'}
+            onChange={(e) => updateSettings({ voiceSource: e.target.value as TTSVoiceSource })}
+            className="px-2 py-1 border rounded text-sm"
+          >
+            <option value="auto">
+              {settings.language === 'uk' ? 'Авто' : settings.language === 'ru' ? 'Авто' : 'Auto'}
+            </option>
+            <option value="builtin">
+              {settings.language === 'uk' ? 'Вбудовані' : settings.language === 'ru' ? 'Встроенные' : 'Built-in'}
+            </option>
+            <option value="system">
+              {settings.language === 'uk' ? 'Системні' : settings.language === 'ru' ? 'Системные' : 'System'}
+            </option>
+          </select>
+        </div>
+
+        {/* Voice availability info */}
+        <div className="p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
+          {settings.language === 'uk' ? (
+            <>
+              🔊 Вбудовані голоси: {audioVoiceCount > 0 ? `✓ (${audioVoices[settings.language]?.names.join(', ')})` : '—'}
+              <br />
+              💻 Системні голоси: {systemVoiceCount > 0 ? `✓ (${systemVoiceCount})` : '—'}
+            </>
+          ) : settings.language === 'ru' ? (
+            <>
+              🔊 Встроенные голоса: {audioVoiceCount > 0 ? `✓ (${audioVoices[settings.language]?.names.join(', ')})` : '—'}
+              <br />
+              💻 Системные голоса: {systemVoiceCount > 0 ? `✓ (${systemVoiceCount})` : '—'}
+            </>
+          ) : (
+            <>
+              🔊 Built-in voices: {audioVoiceCount > 0 ? `✓ (${audioVoices[settings.language]?.names.join(', ')})` : '—'}
+              <br />
+              💻 System voices: {systemVoiceCount > 0 ? `✓ (${systemVoiceCount})` : '—'}
+            </>
+          )}
+        </div>
 
         {/* Speed */}
         <div className="flex items-center justify-between">
@@ -277,20 +324,51 @@ export function TTSPanel({ pattern, className = '' }: TTSPanelProps) {
           </select>
         </div>
 
-        {/* Voice */}
-        <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-gray-700">{t.voice}</label>
-          <select
-            value={settings.voiceGender}
-            onChange={(e) =>
-              updateSettings({ voiceGender: e.target.value as 'male' | 'female' })
-            }
-            className="px-2 py-1 border rounded text-sm"
-          >
-            <option value="female">{t.female}</option>
-            <option value="male">{t.male}</option>
-          </select>
-        </div>
+        {/* Built-in Voice Selector */}
+        {(settings.voiceSource === 'auto' || settings.voiceSource === 'builtin') && (
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-gray-700">
+              {settings.language === 'uk' ? 'Вбудований голос' : settings.language === 'ru' ? 'Встроенный голос' : 'Built-in Voice'}
+            </label>
+            <select
+              value={settings.builtinVoiceId || ''}
+              onChange={(e) => updateSettings({ builtinVoiceId: e.target.value || undefined })}
+              className="px-2 py-1 border rounded text-sm"
+            >
+              <option value="">
+                {settings.language === 'uk' ? 'Авто' : settings.language === 'ru' ? 'Авто' : 'Auto'}
+              </option>
+              {getAudioVoicesForLanguage(settings.language).map((voice) => (
+                <option key={voice.id} value={voice.id}>
+                  {voice.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* System Voice Selector */}
+        {(settings.voiceSource === 'auto' || settings.voiceSource === 'system') && systemVoiceCount > 0 && (
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-gray-700">
+              {settings.language === 'uk' ? 'Системний голос' : settings.language === 'ru' ? 'Системный голос' : 'System Voice'}
+            </label>
+            <select
+              value={settings.systemVoiceName || ''}
+              onChange={(e) => updateSettings({ systemVoiceName: e.target.value || undefined })}
+              className="px-2 py-1 border rounded text-sm max-w-[150px]"
+            >
+              <option value="">
+                {settings.language === 'uk' ? 'Авто' : settings.language === 'ru' ? 'Авто' : 'Auto'}
+              </option>
+              {systemVoices[settings.language]?.names.map((name) => (
+                <option key={name} value={name}>
+                  {name.length > 20 ? name.substring(0, 20) + '...' : name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Pause between colors */}
         <div className="flex items-center justify-between">

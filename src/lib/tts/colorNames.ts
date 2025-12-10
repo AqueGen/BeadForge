@@ -333,8 +333,8 @@ export function getAvailableLanguages(): Array<{
   nativeName: string;
 }> {
   return [
-    { code: 'ru', name: 'Russian', nativeName: 'Русский' },
     { code: 'uk', name: 'Ukrainian', nativeName: 'Українська' },
     { code: 'en', name: 'English', nativeName: 'English' },
+    { code: 'ru', name: 'Russian', nativeName: 'Русский' },
   ];
 }

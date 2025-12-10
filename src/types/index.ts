@@ -213,6 +213,7 @@ export type TTSSpeed = 'slow' | 'normal' | 'fast';
 export type TTSVoiceGender = 'male' | 'female';
 export type TTSMode = 'auto' | 'manual';
 export type TTSFormat = 'individual' | 'grouped';
+export type TTSVoiceSource = 'auto' | 'builtin' | 'system';
 
 export interface TTSSettings {
   language: TTSLanguage;
@@ -222,6 +223,9 @@ export interface TTSSettings {
   mode: TTSMode;
   format: TTSFormat;
   volume: number; // 0-1
+  voiceSource: TTSVoiceSource; // 'auto' = try builtin first, 'builtin' = only audio files, 'system' = only system TTS
+  builtinVoiceId?: string; // Selected built-in voice ID (e.g., 'ru-female-default')
+  systemVoiceName?: string; // Selected system voice name
 }
 
 export interface TTSState {
@@ -247,13 +251,14 @@ export interface TTSGroupedItem {
 }
 
 export const DEFAULT_TTS_SETTINGS: TTSSettings = {
-  language: 'ru',
+  language: 'uk',
   speed: 'normal',
   voiceGender: 'female',
   pauseBetweenColors: 500,
   mode: 'auto',
   format: 'individual',
   volume: 1,
+  voiceSource: 'auto', // Try builtin audio first, fallback to system TTS
 };
 
 export const TTS_SPEED_RATES: Record<TTSSpeed, number> = {
@@ -261,3 +266,49 @@ export const TTS_SPEED_RATES: Record<TTSSpeed, number> = {
   normal: 1.0,
   fast: 1.3,
 };
+
+// ============================================================
+// Audio TTS Types (Pre-recorded audio files)
+// ============================================================
+
+/**
+ * Voice configuration for pre-recorded audio
+ */
+export interface AudioVoiceConfig {
+  id: string;              // e.g., 'female-default', 'male-speaker1'
+  name: string;            // Display name, e.g., 'Алёна', 'David'
+  language: TTSLanguage;
+  gender: TTSVoiceGender;
+  isDefault?: boolean;
+}
+
+/**
+ * Audio file manifest for a voice
+ */
+export interface AudioVoiceManifest {
+  voiceId: string;
+  language: TTSLanguage;
+  gender: TTSVoiceGender;
+  name: string;
+  colors: Record<string, string>; // colorKey -> filename (without extension)
+  numbers?: Record<string, string>; // "1"-"99" for grouped format
+  format: 'mp3' | 'ogg' | 'wav';
+}
+
+/**
+ * Available voices registry
+ */
+export interface AudioVoicesRegistry {
+  voices: AudioVoiceConfig[];
+  manifests: Record<string, AudioVoiceManifest>; // voiceId -> manifest
+}
+
+/**
+ * Audio TTS playback state
+ */
+export interface AudioTTSState {
+  isLoaded: boolean;
+  loadError?: string;
+  availableVoices: AudioVoiceConfig[];
+  currentVoice?: AudioVoiceConfig;
+}

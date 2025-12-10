@@ -1,5 +1,6 @@
 /**
  * TTS Service - Web Speech API wrapper for bead pattern vocalization
+ * With AudioTTS integration for pre-recorded audio files
  */
 
 import type {
@@ -10,7 +11,14 @@ import type {
   TTSBeadItem,
   TTSGroupedItem,
 } from '@/types';
-import { getColorName, getLanguageCode } from './colorNames';
+import { getColorName, getLanguageCode, COLOR_TRANSLATIONS } from './colorNames';
+import {
+  playColorAudio,
+  stopAudio as stopPrerecordedAudio,
+  getDefaultAudioVoice,
+  isAudioTTSSupported,
+  getAudioVoicesForLanguage,
+} from './audioTTS';
 
 /**
  * Check if TTS is supported in the current browser
@@ -49,6 +57,17 @@ const VOICE_GENDER_PATTERNS: Record<TTSVoiceGender, Record<TTSLanguage, string[]
     en: ['david', 'mark', 'james', 'george', 'richard', 'daniel', 'male', 'guy'],
   },
 };
+
+/**
+ * Select voice by exact name
+ */
+export function selectVoiceByName(
+  language: TTSLanguage,
+  voiceName: string
+): SpeechSynthesisVoice | null {
+  const voices = getVoicesForLanguage(language);
+  return voices.find((voice) => voice.name === voiceName) || null;
+}
 
 /**
  * Select best voice based on language and gender preference
@@ -178,8 +197,14 @@ export function createUtterance(
 
   const utterance = new SpeechSynthesisUtterance(text);
 
-  // Set voice
-  const voice = selectVoice(settings.language, settings.voiceGender);
+  // Set voice - use explicitly selected voice if available
+  let voice: SpeechSynthesisVoice | null = null;
+  if (settings.systemVoiceName) {
+    voice = selectVoiceByName(settings.language, settings.systemVoiceName);
+  }
+  if (!voice) {
+    voice = selectVoice(settings.language, settings.voiceGender);
+  }
   if (voice) {
     utterance.voice = voice;
   }
@@ -221,7 +246,20 @@ export function getGroupedText(item: TTSGroupedItem, _language: TTSLanguage): st
 }
 
 /**
+ * Get the original color name (English key) from translated color name
+ */
+function getColorKeyFromTranslation(translatedName: string, language: TTSLanguage): string | null {
+  for (const [colorKey, translations] of Object.entries(COLOR_TRANSLATIONS)) {
+    if (translations[language] === translatedName) {
+      return colorKey;
+    }
+  }
+  return null;
+}
+
+/**
  * TTS Controller class for managing playback
+ * Uses pre-recorded audio files with fallback to Web Speech API
  */
 export class TTSController {
   private settings: TTSSettings;
@@ -234,9 +272,11 @@ export class TTSController {
   private onComplete?: () => void;
   private onStateChange?: (isPlaying: boolean, isPaused: boolean) => void;
   private pauseTimeout?: ReturnType<typeof setTimeout>;
+  private useAudioFiles = true; // Try audio files first
 
   constructor(settings: TTSSettings) {
     this.settings = settings;
+    this.useAudioFiles = isAudioTTSSupported();
   }
 
   /**
@@ -298,6 +338,7 @@ export class TTSController {
   pause(): void {
     if (this.isPlaying) {
       window.speechSynthesis.cancel();
+      stopPrerecordedAudio(); // Stop any pre-recorded audio
       if (this.pauseTimeout) {
         clearTimeout(this.pauseTimeout);
       }
@@ -312,6 +353,7 @@ export class TTSController {
    */
   stop(): void {
     window.speechSynthesis.cancel();
+    stopPrerecordedAudio(); // Stop any pre-recorded audio
     if (this.pauseTimeout) {
       clearTimeout(this.pauseTimeout);
     }
@@ -370,10 +412,96 @@ export class TTSController {
   }
 
   /**
+   * Get color key for audio file lookup
+   */
+  private getCurrentColorKey(): string | null {
+    const colorName = this.getCurrentColorName();
+    if (!colorName) return null;
+
+    // Try to find the English color key from the translated name
+    const colorKey = getColorKeyFromTranslation(colorName, this.settings.language);
+    if (colorKey) return colorKey;
+
+    // If not found in translations, try using the name directly (might be English)
+    if (COLOR_TRANSLATIONS[colorName]) {
+      return colorName;
+    }
+
+    return null;
+  }
+
+  /**
+   * Check if should use audio files based on voiceSource setting
+   */
+  private shouldUseAudioFiles(): boolean {
+    const voiceSource = this.settings.voiceSource || 'auto';
+
+    // 'system' = only use system TTS, never audio files
+    if (voiceSource === 'system') return false;
+
+    // 'builtin' or 'auto' = try audio files (if available)
+    return this.useAudioFiles;
+  }
+
+  /**
+   * Check if should use system TTS based on voiceSource setting
+   */
+  private shouldUseSystemTTS(): boolean {
+    const voiceSource = this.settings.voiceSource || 'auto';
+
+    // 'builtin' = only use builtin audio, never system TTS
+    if (voiceSource === 'builtin') return false;
+
+    // 'system' or 'auto' = use system TTS (as primary or fallback)
+    return isTTSSupported();
+  }
+
+  /**
+   * Get the builtin voice ID to use
+   */
+  private getBuiltinVoiceId(): string | null {
+    // Use explicitly selected voice if available
+    if (this.settings.builtinVoiceId) {
+      return this.settings.builtinVoiceId;
+    }
+
+    // Fall back to default voice for language
+    const defaultVoice = getDefaultAudioVoice(this.settings.language, this.settings.voiceGender);
+    return defaultVoice?.id || null;
+  }
+
+  /**
+   * Try to play audio file, returns true if successful
+   */
+  private async tryPlayAudio(): Promise<boolean> {
+    if (!this.shouldUseAudioFiles()) return false;
+
+    const colorKey = this.getCurrentColorKey();
+    if (!colorKey) return false;
+
+    const voiceId = this.getBuiltinVoiceId();
+    if (!voiceId) return false;
+
+    try {
+      const played = await playColorAudio(
+        voiceId,
+        colorKey,
+        this.settings.speed,
+        this.settings.volume
+      );
+      return played;
+    } catch (error) {
+      console.warn('[TTS] Audio playback failed, falling back to speech synthesis:', error);
+      return false;
+    }
+  }
+
+  /**
    * Speak single item (for manual mode)
    */
   speakCurrent(): void {
     window.speechSynthesis.cancel();
+    stopPrerecordedAudio();
 
     const text = this.getCurrentText();
     if (!text) return;
@@ -382,10 +510,29 @@ export class TTSController {
     const colorName = this.getCurrentColorName();
     this.onPositionChange?.(position, colorName);
 
-    const utterance = createUtterance(text, this.settings);
-    if (utterance) {
-      window.speechSynthesis.speak(utterance);
+    const voiceSource = this.settings.voiceSource || 'auto';
+
+    // If system only, skip audio files entirely
+    if (voiceSource === 'system') {
+      if (this.shouldUseSystemTTS()) {
+        const utterance = createUtterance(text, this.settings);
+        if (utterance) {
+          window.speechSynthesis.speak(utterance);
+        }
+      }
+      return;
     }
+
+    // Try audio file first (for 'auto' and 'builtin')
+    this.tryPlayAudio().then((played) => {
+      // If audio played or voiceSource is 'builtin', don't fallback to system TTS
+      if (!played && this.shouldUseSystemTTS()) {
+        const utterance = createUtterance(text, this.settings);
+        if (utterance) {
+          window.speechSynthesis.speak(utterance);
+        }
+      }
+    });
   }
 
   /**
@@ -451,10 +598,8 @@ export class TTSController {
 
     this.onPositionChange?.(position, colorName);
 
-    const utterance = createUtterance(text, this.settings);
-    if (!utterance) return;
-
-    utterance.onend = () => {
+    // Handle auto mode with next after playback
+    const handlePlaybackComplete = () => {
       if (this.settings.mode === 'auto' && this.isPlaying) {
         this.currentIndex++;
         // Add pause between colors
@@ -464,7 +609,42 @@ export class TTSController {
       }
     };
 
-    window.speechSynthesis.speak(utterance);
+    const voiceSource = this.settings.voiceSource || 'auto';
+
+    // If system only, skip audio files entirely
+    if (voiceSource === 'system') {
+      if (this.shouldUseSystemTTS()) {
+        const utterance = createUtterance(text, this.settings);
+        if (!utterance) {
+          handlePlaybackComplete();
+          return;
+        }
+        utterance.onend = handlePlaybackComplete;
+        window.speechSynthesis.speak(utterance);
+      } else {
+        handlePlaybackComplete();
+      }
+      return;
+    }
+
+    // Try audio file first (for 'auto' and 'builtin')
+    this.tryPlayAudio().then((played) => {
+      if (played) {
+        handlePlaybackComplete();
+      } else if (this.shouldUseSystemTTS()) {
+        // Fallback to speech synthesis (only for 'auto')
+        const utterance = createUtterance(text, this.settings);
+        if (!utterance) {
+          handlePlaybackComplete();
+          return;
+        }
+        utterance.onend = handlePlaybackComplete;
+        window.speechSynthesis.speak(utterance);
+      } else {
+        // No audio and no system TTS available - just continue
+        handlePlaybackComplete();
+      }
+    });
   }
 }
 
