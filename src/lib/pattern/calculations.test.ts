@@ -141,10 +141,10 @@ describe('calculations', () => {
 
       const list = generateBeadList(pattern);
 
-      // Reversed order: 2,2,1,1
+      // Left to right order: 1,1,2,2
       expect(list).toHaveLength(2);
-      expect(list[0]).toEqual({ colorIndex: 2, count: 2 });
-      expect(list[1]).toEqual({ colorIndex: 1, count: 2 });
+      expect(list[0]).toEqual({ colorIndex: 1, count: 2 });
+      expect(list[1]).toEqual({ colorIndex: 2, count: 2 });
     });
 
     it('should merge consecutive same colors', () => {

@@ -80,9 +80,9 @@ export function generateBeadList(pattern: BeadPattern): BeadRun[] {
   let currentColor: number | null = null;
   let currentCount = 0;
 
-  // Read beads in reverse order (last row first, right to left)
-  for (let y = usedHeight - 1; y >= 0; y--) {
-    for (let x = pattern.width - 1; x >= 0; x--) {
+  // Read beads bottom to top (y=0 is visual bottom), left to right
+  for (let y = 0; y < usedHeight; y++) {
+    for (let x = 0; x < pattern.width; x++) {
       const color = pattern.field[y * pattern.width + x];
 
       if (currentColor === null) {
@@ -167,8 +167,8 @@ export function positionToCoordinates(
   }
 
   const zeroBasedPos = position - 1;
-  const y = usedHeight - 1 - Math.floor(zeroBasedPos / width);
-  const x = width - 1 - (zeroBasedPos % width);
+  const y = Math.floor(zeroBasedPos / width);  // Bottom to top (y=0 is visual bottom)
+  const x = zeroBasedPos % width;  // Left to right
 
   return { x, y };
 }
