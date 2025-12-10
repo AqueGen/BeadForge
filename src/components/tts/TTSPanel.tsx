@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useCallback, useState, useRef } from 'react';
-import type { BeadPattern, TTSLanguage, TTSSpeed, TTSMode, TTSFormat, TTSVoiceSource } from '@/types';
+import type { BeadPattern, TTSLanguage, TTSSpeed, TTSMode, TTSFormat, TTSVoiceSource, TTSProgress } from '@/types';
 import {
   UI_TRANSLATIONS,
   getAvailableLanguages,
@@ -15,6 +15,7 @@ import {
   deleteProgress,
 } from '@/lib/tts';
 import { useTTS } from '@/hooks';
+import { TTSRestorePanel } from './TTSRestorePanel';
 
 interface TTSPanelProps {
   pattern: BeadPattern;
@@ -62,7 +63,9 @@ export function TTSPanel({
   const [completedBeads, setCompletedBeads] = useState(0);
   const [navigationMode, setNavigationMode] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [savedProgressToRestore, setSavedProgressToRestore] = useState<TTSProgress | null>(null);
   const patternIdRef = useRef<string>('');
+  const initialLoadDoneRef = useRef(false);
 
   const t = UI_TRANSLATIONS[settings.language];
   const systemVoiceCount = systemVoices[settings.language]?.count || 0;
@@ -87,24 +90,44 @@ export function TTSPanel({
     initializeWithPattern(pattern);
   }, [pattern, initializeWithPattern]);
 
-  // Load saved progress when pattern changes
+  // Check for saved progress when pattern changes (show restore panel instead of auto-restoring)
+  // Run only once per pattern ID change
   useEffect(() => {
     const patternId = generatePatternId(pattern);
+
+    // Skip if we already processed this pattern
+    if (patternIdRef.current === patternId && initialLoadDoneRef.current) {
+      console.log('[TTS] Skipping duplicate load for:', patternId);
+      return;
+    }
+
     patternIdRef.current = patternId;
+    initialLoadDoneRef.current = true;
+
+    // Debug: Show all saved progress in localStorage
+    try {
+      const allSaved = localStorage.getItem('beadforge_tts_progress');
+      console.log('[TTS] All saved progress in localStorage:', allSaved);
+    } catch {
+      console.log('[TTS] Could not read localStorage');
+    }
 
     const savedProgress = getProgress(patternId);
-    if (savedProgress) {
-      setCompletedBeads(savedProgress.completedBeads);
-      onCompletedBeadsChange?.(savedProgress.completedBeads);
-      // Restore position if we have saved progress
-      if (savedProgress.position > 1) {
-        goToPosition(savedProgress.position);
-      }
+    console.log('[TTS] Initial load for Pattern ID:', patternId);
+    console.log('[TTS] Pattern.id property:', pattern.id);
+    console.log('[TTS] Pattern dimensions:', pattern.width, 'x', pattern.height);
+    console.log('[TTS] Saved progress for this ID:', savedProgress);
+
+    if (savedProgress && savedProgress.position > 1) {
+      // Show restore panel instead of auto-restoring
+      console.log('[TTS] ✅ Showing restore panel');
+      setSavedProgressToRestore(savedProgress);
     } else {
+      console.log('[TTS] ❌ No saved progress or position <= 1');
       setCompletedBeads(0);
-      onCompletedBeadsChange?.(0);
+      setSavedProgressToRestore(null);
     }
-  }, [pattern, goToPosition, onCompletedBeadsChange]);
+  }, [pattern]);  // Only depend on pattern, not on callbacks
 
   // Save progress on pause
   useEffect(() => {
@@ -116,16 +139,28 @@ export function TTSPanel({
     }
   }, [state.isPaused, state.currentPosition, onCompletedBeadsChange]);
 
-  // Update completed beads during playback (every position change)
+  // Update completed beads during playback (every position change) and auto-save
   useEffect(() => {
     if (state.isPlaying && state.currentPosition > 0) {
       const completed = state.currentPosition - 1;
       if (completed !== completedBeads) {
         setCompletedBeads(completed);
         onCompletedBeadsChange?.(completed);
+        // Auto-save on every bead change (in case of power loss/crash)
+        saveProgress(patternIdRef.current, state.currentPosition, completed);
       }
     }
   }, [state.isPlaying, state.currentPosition, completedBeads, onCompletedBeadsChange]);
+
+  // Save progress in manual mode when position changes (next/previous)
+  useEffect(() => {
+    if (settings.mode === 'manual' && !state.isPlaying && state.currentPosition > 0) {
+      const completed = state.currentPosition - 1;
+      setCompletedBeads(completed);
+      onCompletedBeadsChange?.(completed);
+      saveProgress(patternIdRef.current, state.currentPosition, completed);
+    }
+  }, [settings.mode, state.isPlaying, state.currentPosition, onCompletedBeadsChange]);
 
   // Notify parent about navigation mode changes
   useEffect(() => {
@@ -136,9 +171,14 @@ export function TTSPanel({
   useEffect(() => {
     if (navigateToPosition !== null && navigateToPosition !== undefined && navigateToPosition > 0) {
       goToPosition(navigateToPosition);
+      // Save progress when navigating via bead click
+      const completed = navigateToPosition - 1;
+      setCompletedBeads(completed);
+      onCompletedBeadsChange?.(completed);
+      saveProgress(patternIdRef.current, navigateToPosition, completed);
       onNavigateComplete?.();
     }
-  }, [navigateToPosition, goToPosition, onNavigateComplete]);
+  }, [navigateToPosition, goToPosition, onNavigateComplete, onCompletedBeadsChange]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -179,11 +219,16 @@ export function TTSPanel({
   const handlePositionChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const position = parseInt(e.target.value, 10);
-      if (!isNaN(position)) {
+      if (!isNaN(position) && position > 0) {
         goToPosition(position);
+        // Save progress when manually changing position
+        const completed = position - 1;
+        setCompletedBeads(completed);
+        onCompletedBeadsChange?.(completed);
+        saveProgress(patternIdRef.current, position, completed);
       }
     },
-    [goToPosition]
+    [goToPosition, onCompletedBeadsChange]
   );
 
   // Toggle navigation mode
@@ -208,6 +253,21 @@ export function TTSPanel({
     setShowResetConfirm(false);
   }, []);
 
+  // Handle restore progress from restore panel
+  const handleRestoreProgress = useCallback((position: number, restoredCompletedBeads: number) => {
+    goToPosition(position);
+    setCompletedBeads(restoredCompletedBeads);
+    onCompletedBeadsChange?.(restoredCompletedBeads);
+    setSavedProgressToRestore(null);
+  }, [goToPosition, onCompletedBeadsChange]);
+
+  // Handle dismiss restore panel (start fresh)
+  const handleDismissRestorePanel = useCallback(() => {
+    setCompletedBeads(0);
+    onCompletedBeadsChange?.(0);
+    setSavedProgressToRestore(null);
+  }, [onCompletedBeadsChange]);
+
   if (!state.isSupported) {
     return (
       <div className={`bg-yellow-50 border border-yellow-200 rounded-lg p-4 ${className}`}>
@@ -227,6 +287,18 @@ export function TTSPanel({
           TTS - {t.currentColor}
         </h3>
       </div>
+
+      {/* Restore Progress Panel */}
+      {savedProgressToRestore && (
+        <div className="p-3 border-b">
+          <TTSRestorePanel
+            pattern={pattern}
+            savedProgress={savedProgressToRestore}
+            onRestore={handleRestoreProgress}
+            onDismiss={handleDismissRestorePanel}
+          />
+        </div>
+      )}
 
       {/* Current Status */}
       <div className="px-4 py-3 border-b">

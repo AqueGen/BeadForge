@@ -9,17 +9,18 @@ const STORAGE_KEY = 'beadforge_tts_progress';
 const MAX_AGE_DAYS = 30; // Auto-cleanup old progress after 30 days
 
 /**
- * Generate a unique pattern ID from pattern data
- * Uses the pattern's existing ID, or creates hash from dimensions + field data
+ * Generate a stable pattern ID from pattern content for TTS progress tracking.
+ * ALWAYS uses a content-based hash (dimensions + field data) so that progress
+ * persists across page reloads, even if the pattern object gets a new UUID.
+ *
+ * Note: We intentionally ignore pattern.id because UUIDs are regenerated on reload,
+ * but the pattern content remains the same.
  */
 export function generatePatternId(pattern: { id?: string; width: number; height: number; field: Uint8Array | number[] }): string {
-  // If pattern has an ID, use it
-  if (pattern.id) {
-    return pattern.id;
-  }
-
-  // Otherwise create a hash from pattern data
-  const fieldSample = Array.from(pattern.field).slice(0, 50).join(',');
+  // Always create a content-based hash from pattern data for stable identification
+  // Use more field data for better uniqueness (first 200 bytes or full field if smaller)
+  const sampleSize = Math.min(pattern.field.length, 200);
+  const fieldSample = Array.from(pattern.field).slice(0, sampleSize).join(',');
   return `${pattern.width}x${pattern.height}_${hashCode(fieldSample)}`;
 }
 
