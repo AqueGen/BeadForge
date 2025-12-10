@@ -346,3 +346,122 @@ export interface TTSNavigationMode {
   enabled: boolean;            // Is navigation mode active
   selectedPosition: number | null;  // Position selected by user click
 }
+
+// ============================================================
+// Ball Pattern Types (Beaded Ball / Шарик)
+// ============================================================
+
+/**
+ * Pattern type discriminator
+ */
+export type PatternType = 'rope' | 'ball';
+
+/**
+ * Ball size configuration
+ * Maps diameter (cm) to bead dimensions
+ */
+export interface BallSizeConfig {
+  diameter: number;      // Diameter in cm (3, 4, 5, 6, etc.)
+  circumference: number; // Total beads around circumference
+  wedgeBase: number;     // Beads at wedge base (circumference / 6)
+  wedgeHeight: number;   // Number of rows in wedge
+}
+
+/**
+ * Predefined ball size configurations
+ */
+export const BALL_SIZE_CONFIGS: BallSizeConfig[] = [
+  { diameter: 3, circumference: 54, wedgeBase: 9, wedgeHeight: 6 },
+  { diameter: 4, circumference: 66, wedgeBase: 11, wedgeHeight: 10 },
+  { diameter: 5, circumference: 78, wedgeBase: 13, wedgeHeight: 11 },
+  { diameter: 6, circumference: 90, wedgeBase: 15, wedgeHeight: 14 },
+];
+
+/**
+ * Get ball size config by diameter
+ */
+export function getBallSizeConfig(diameter: number): BallSizeConfig | undefined {
+  return BALL_SIZE_CONFIGS.find(c => c.diameter === diameter);
+}
+
+/**
+ * Ball pattern data structure
+ * Represents a beaded ball with 6 wedges in zigzag layout
+ */
+export interface BallPattern {
+  id: string;
+  name: string;
+  author?: string;
+  notes?: string;
+  type: 'ball';
+
+  /** Ball diameter in cm */
+  diameter: number;
+
+  /** Derived from diameter */
+  circumference: number;  // Total beads around
+  wedgeBase: number;      // Beads at widest point of wedge
+  wedgeHeight: number;    // Rows in each wedge
+
+  /**
+   * Field data for the full development (развёртка)
+   * Layout: 6 wedges up + 6 wedges down in zigzag
+   * Width = circumference (6 * wedgeBase)
+   * Height = 2 * wedgeHeight (top + bottom wedges)
+   */
+  width: number;   // = circumference
+  height: number;  // = 2 * wedgeHeight
+  field: Uint8Array;
+
+  /** Color palette (shared with BeadPattern) */
+  colors: BeadColor[];
+
+  createdAt: Date;
+  updatedAt: Date;
+  isPublic: boolean;
+
+  price?: number;
+  previewUrl?: string;
+}
+
+/**
+ * Serializable version of BallPattern for API/storage
+ */
+export interface BallPatternDto {
+  id: string;
+  name: string;
+  author?: string;
+  notes?: string;
+  type: 'ball';
+  diameter: number;
+  circumference: number;
+  wedgeBase: number;
+  wedgeHeight: number;
+  width: number;
+  height: number;
+  /** Base64 encoded field data */
+  field: string;
+  colors: BeadColor[];
+  createdAt: string;
+  updatedAt: string;
+  isPublic: boolean;
+  price?: number;
+  previewUrl?: string;
+}
+
+/**
+ * Wedge position in the ball development
+ */
+export type WedgePosition = 'top' | 'bottom';
+
+/**
+ * Single wedge info for rendering/editing
+ */
+export interface WedgeInfo {
+  index: number;           // 0-5
+  position: WedgePosition; // 'top' or 'bottom'
+  startX: number;          // X offset in field
+  startY: number;          // Y offset in field
+  base: number;            // Width at base
+  height: number;          // Number of rows
+}

@@ -12,6 +12,8 @@ import {
   dtoToPattern,
   getPatternStats,
   getSamplePattern,
+  loadJBB,
+  downloadJBB,
 } from '@/lib/pattern';
 import { floodFill as floodFillFn } from '@/lib/pattern';
 
@@ -28,6 +30,8 @@ export interface UsePatternReturn {
     loadSample: (sampleId: string) => void;
     reset: (width?: number, height?: number) => void;
     getStats: () => PatternStats;
+    saveJBB: () => void;
+    loadJBB: (file: File) => Promise<void>;
   };
 }
 
@@ -96,6 +100,16 @@ export function usePattern(
     return getPatternStats(pattern);
   }, [pattern]);
 
+  const saveJBB = useCallback(() => {
+    downloadJBB(pattern);
+  }, [pattern]);
+
+  const loadJBBFile = useCallback(async (file: File) => {
+    const text = await file.text();
+    const loaded = loadJBB(text, file.name.replace(/\.jbb$/i, ''));
+    setPattern(loaded);
+  }, []);
+
   const actions = useMemo(
     () => ({
       setBead,
@@ -108,8 +122,10 @@ export function usePattern(
       loadSample,
       reset,
       getStats,
+      saveJBB,
+      loadJBB: loadJBBFile,
     }),
-    [setBead, floodFill, clear, mirrorH, mirrorV, save, load, loadSample, reset, getStats]
+    [setBead, floodFill, clear, mirrorH, mirrorV, save, load, loadSample, reset, getStats, saveJBB, loadJBBFile]
   );
 
   return { pattern, actions };

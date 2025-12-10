@@ -16,6 +16,8 @@ interface ToolbarProps {
   onLoad: (file: File) => void;
   onNew: () => void;
   onShowStats: () => void;
+  onSaveJBB?: () => void;
+  onLoadJBB?: (file: File) => void;
 }
 
 interface ToolButtonProps {
@@ -56,8 +58,11 @@ export const Toolbar: FC<ToolbarProps> = ({
   onLoad,
   onNew,
   onShowStats,
+  onSaveJBB,
+  onLoadJBB,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const jbbInputRef = useRef<HTMLInputElement>(null);
 
   const handleLoadClick = () => {
     fileInputRef.current?.click();
@@ -71,6 +76,18 @@ export const Toolbar: FC<ToolbarProps> = ({
     }
   };
 
+  const handleLoadJBBClick = () => {
+    jbbInputRef.current?.click();
+  };
+
+  const handleJBBFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && onLoadJBB) {
+      onLoadJBB(file);
+      e.target.value = '';
+    }
+  };
+
   return (
     <div className="flex flex-wrap items-center gap-4 border-b bg-white px-4 py-2">
       {/* File operations */}
@@ -78,10 +95,10 @@ export const Toolbar: FC<ToolbarProps> = ({
         <ToolButton onClick={onNew} title="New Pattern">
           📄 New
         </ToolButton>
-        <ToolButton onClick={handleLoadClick} title="Open Pattern">
+        <ToolButton onClick={handleLoadClick} title="Open Pattern (.beadforge)">
           📂 Open
         </ToolButton>
-        <ToolButton onClick={onSave} title="Save Pattern">
+        <ToolButton onClick={onSave} title="Save Pattern (.beadforge)">
           💾 Save
         </ToolButton>
         <input
@@ -92,6 +109,29 @@ export const Toolbar: FC<ToolbarProps> = ({
           className="hidden"
         />
       </ToolbarGroup>
+
+      {/* JBead Import/Export */}
+      {(onLoadJBB || onSaveJBB) && (
+        <ToolbarGroup>
+          {onLoadJBB && (
+            <ToolButton onClick={handleLoadJBBClick} title="Import JBead .jbb file">
+              📥 JBB
+            </ToolButton>
+          )}
+          {onSaveJBB && (
+            <ToolButton onClick={onSaveJBB} title="Export to JBead .jbb format">
+              📤 JBB
+            </ToolButton>
+          )}
+          <input
+            ref={jbbInputRef}
+            type="file"
+            accept=".jbb"
+            onChange={handleJBBFileChange}
+            className="hidden"
+          />
+        </ToolbarGroup>
+      )}
 
       {/* Drawing tools */}
       <ToolbarGroup>

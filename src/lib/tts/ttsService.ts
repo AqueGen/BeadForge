@@ -8,10 +8,12 @@ import type {
   TTSVoiceGender,
   TTSLanguage,
   BeadPattern,
+  BallPattern,
   TTSBeadItem,
   TTSGroupedItem,
 } from '@/types';
 import { getColorName, getLanguageCode, COLOR_TRANSLATIONS } from './colorNames';
+import { isPositionInWedge } from '@/lib/pattern';
 import {
   playColorAudio,
   playNumberAudio,
@@ -156,6 +158,43 @@ export function generateBeadListForTTS(
 }
 
 /**
+ * Generate bead list for TTS from ball pattern
+ * Beads are read from bottom-left to top-right, skipping empty spaces
+ */
+export function generateBallBeadListForTTS(
+  pattern: BallPattern,
+  language: TTSLanguage
+): TTSBeadItem[] {
+  const items: TTSBeadItem[] = [];
+  const { width, height, field, colors } = pattern;
+
+  // Generate items in reading order (left-to-right, bottom-to-top)
+  // Skipping empty spaces between wedges
+  let position = 1;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      // Skip positions outside wedges
+      if (!isPositionInWedge(pattern, x, y)) {
+        continue;
+      }
+
+      const colorIndex = field[y * width + x];
+      const color = colors[colorIndex];
+      const colorName = getColorName(color?.name, language, colorIndex);
+
+      items.push({
+        colorIndex,
+        colorName,
+        position,
+      });
+      position++;
+    }
+  }
+
+  return items;
+}
+
+/**
  * Group consecutive same-color beads
  */
 export function groupBeadList(items: TTSBeadItem[]): TTSGroupedItem[] {
@@ -281,10 +320,19 @@ export class TTSController {
   }
 
   /**
-   * Initialize with pattern data
+   * Initialize with rope pattern data
    */
   initialize(pattern: BeadPattern): void {
     this.items = generateBeadListForTTS(pattern, this.settings.language);
+    this.groupedItems = groupBeadList(this.items);
+    this.currentIndex = 0;
+  }
+
+  /**
+   * Initialize with ball pattern data
+   */
+  initializeBallPattern(pattern: BallPattern): void {
+    this.items = generateBallBeadListForTTS(pattern, this.settings.language);
     this.groupedItems = groupBeadList(this.items);
     this.currentIndex = 0;
   }

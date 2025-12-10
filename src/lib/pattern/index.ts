@@ -44,3 +44,42 @@ export {
   getSamplePattern,
   type SamplePatternInfo,
 } from './samplePatterns';
+
+// Ball pattern functions
+export {
+  createBallPattern,
+  getAllWedges,
+  getWedgeByIndex,
+  getWedgeWidthAtRow,
+  getWedgeRowOffset,
+  getWedgeAtPosition,
+  isPositionInWedge,
+  getBallPatternBead,
+  setBallPatternBead,
+  countBallPatternBeads,
+  countBallBeadsByColor,
+  generateBallBeadListForTTS,
+  ballPatternToDto,
+  dtoToBallPattern,
+  copyWedge,
+  copyWedgeToAll,
+  mirrorWedgeHorizontally,
+} from './ballPattern';
+
+// Ball pattern drawing tools
+export {
+  floodFillBallPattern,
+  drawLineBallPattern,
+  drawRectangleBallPattern,
+} from './ballDrawing';
+
+// JBead .jbb file format support
+export {
+  parseJBB,
+  jbbToBeadPattern,
+  beadPatternToJBB,
+  loadJBB,
+  saveJBB,
+  downloadJBB,
+  type JBBData,
+} from './jbbFormat';

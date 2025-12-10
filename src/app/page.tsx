@@ -170,6 +170,8 @@ export default function EditorPage() {
             `Width: ${stats.width}\nHeight: ${stats.usedHeight}/${stats.height}\nRepeat: ${stats.repeat}\nTotal beads: ${stats.totalBeads}`
           );
         }}
+        onSaveJBB={() => actions.saveJBB()}
+        onLoadJBB={actions.loadJBB}
       />
 
       <div className="flex flex-1">
