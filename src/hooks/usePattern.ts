@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { BeadPattern, PatternStats } from '@/types';
 import {
   createPattern,
@@ -16,6 +16,8 @@ import {
   downloadJBB,
 } from '@/lib/pattern';
 import { floodFill as floodFillFn } from '@/lib/pattern';
+
+const STORAGE_KEY = 'beadforge_pattern';
 
 export interface UsePatternReturn {
   pattern: BeadPattern;
@@ -35,6 +37,32 @@ export interface UsePatternReturn {
   };
 }
 
+// Helper to load pattern from localStorage
+function loadFromStorage(): BeadPattern | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const dto = JSON.parse(saved);
+      return dtoToPattern(dto);
+    }
+  } catch (e) {
+    console.error('Failed to load pattern from localStorage:', e);
+  }
+  return null;
+}
+
+// Helper to save pattern to localStorage
+function saveToStorage(pattern: BeadPattern): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const dto = patternToDto(pattern);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(dto));
+  } catch (e) {
+    console.error('Failed to save pattern to localStorage:', e);
+  }
+}
+
 export function usePattern(
   initialWidth: number = 8,
   initialHeight: number = 100
@@ -42,6 +70,14 @@ export function usePattern(
   const [pattern, setPattern] = useState<BeadPattern>(() =>
     createPattern(initialWidth, initialHeight)
   );
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    const saved = loadFromStorage();
+    if (saved) {
+      setPattern(saved);
+    }
+  }, []);
 
   const setBead = useCallback((x: number, y: number, colorIndex: number) => {
     setPattern((prev) => setBeadFn(prev, x, y, colorIndex));
@@ -108,6 +144,8 @@ export function usePattern(
     const text = await file.text();
     const loaded = loadJBB(text, file.name.replace(/\.jbb$/i, ''));
     setPattern(loaded);
+    // Save to localStorage for persistence
+    saveToStorage(loaded);
   }, []);
 
   const actions = useMemo(

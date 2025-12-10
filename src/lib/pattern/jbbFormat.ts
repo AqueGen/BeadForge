@@ -301,17 +301,16 @@ export function jbbToBeadPattern(jbb: JBBData, name?: string): BeadPattern {
   const width = height > 0 ? jbb.model[0].length : 0;
 
   // Create field from model data
-  // JBB uses 1-based indices, our format uses 0-based
+  // JBB indices are 0-based into colors array
   // JBB rows are stored top-to-bottom, we store bottom-to-top
   const field = new Uint8Array(width * height);
 
   for (let y = 0; y < height; y++) {
     const row = jbb.model[height - 1 - y]; // Reverse row order
     for (let x = 0; x < width; x++) {
-      // Convert 1-based to 0-based index
-      // JBB index 1 = our index 0 (first color)
-      const jbbIndex = row[x] || 1;
-      field[y * width + x] = Math.max(0, jbbIndex - 1);
+      // JBB index directly maps to colors array index
+      // JBB 0 = colors[0], JBB 1 = colors[1], etc.
+      field[y * width + x] = row[x] || 0;
     }
   }
 
