@@ -173,7 +173,7 @@ def generate_color_audio(
 
 
 def generate_number_audio(
-    max_number: int = 20,
+    max_number: int = 100,
     languages: Optional[List[str]] = None,
     voice_configs: Optional[List[dict]] = None,
     overwrite: bool = False
@@ -241,7 +241,7 @@ def generate_all_audio(
     if include_numbers:
         print("\nGenerating number audio files...")
         stats["numbers"] = generate_number_audio(
-            max_number=20, languages=languages, overwrite=overwrite
+            max_number=100, languages=languages, overwrite=overwrite
         )
 
     print(f"\n{'='*60}")

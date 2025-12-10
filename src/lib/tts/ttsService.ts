@@ -14,6 +14,7 @@ import type {
 import { getColorName, getLanguageCode, COLOR_TRANSLATIONS } from './colorNames';
 import {
   playColorAudio,
+  playNumberAudio,
   stopAudio as stopPrerecordedAudio,
   getDefaultAudioVoice,
   isAudioTTSSupported,
@@ -472,6 +473,7 @@ export class TTSController {
 
   /**
    * Try to play audio file, returns true if successful
+   * For grouped mode with count > 1, plays color audio then number audio
    */
   private async tryPlayAudio(): Promise<boolean> {
     if (!this.shouldUseAudioFiles()) return false;
@@ -483,13 +485,46 @@ export class TTSController {
     if (!voiceId) return false;
 
     try {
-      const played = await playColorAudio(
+      // Play color audio first
+      const colorPlayed = await playColorAudio(
         voiceId,
         colorKey,
         this.settings.speed,
         this.settings.volume
       );
-      return played;
+
+      if (!colorPlayed) return false;
+
+      // For grouped mode with count > 1, also play the number
+      if (this.settings.format === 'grouped') {
+        const groupCount = this.getCurrentGroupCount();
+        if (groupCount > 1) {
+          // Small pause between color and number
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          // Try to play number audio, fallback to system TTS if not available
+          const numberPlayed = await playNumberAudio(
+            voiceId,
+            groupCount,
+            this.settings.speed,
+            this.settings.volume
+          );
+
+          // If number audio not available, use system TTS for number only
+          if (!numberPlayed && this.shouldUseSystemTTS()) {
+            const utterance = createUtterance(String(groupCount), this.settings);
+            if (utterance) {
+              await new Promise<void>((resolve) => {
+                utterance.onend = () => resolve();
+                utterance.onerror = () => resolve();
+                window.speechSynthesis.speak(utterance);
+              });
+            }
+          }
+        }
+      }
+
+      return true;
     } catch (error) {
       console.warn('[TTS] Audio playback failed, falling back to speech synthesis:', error);
       return false;
