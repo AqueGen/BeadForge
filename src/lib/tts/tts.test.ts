@@ -103,10 +103,10 @@ describe('colorNames', () => {
 
 describe('ttsService', () => {
   describe('generateBeadListForTTS', () => {
-    it('should generate bead list in reverse order (stringing order)', () => {
+    it('should generate bead list in reading order (left-to-right, bottom-to-top)', () => {
       let pattern = createPattern(3, 2);
-      // Row 0: [0, 1, 2]
-      // Row 1: [3, 4, 5]
+      // Row 0 (bottom): [0, 1, 2]
+      // Row 1 (top): [3, 4, 5]
       pattern = setBead(pattern, 0, 0, 0);
       pattern = setBead(pattern, 1, 0, 1);
       pattern = setBead(pattern, 2, 0, 2);
@@ -116,15 +116,15 @@ describe('ttsService', () => {
 
       const list = generateBeadListForTTS(pattern, 'en');
 
-      // Should be reversed: row 1 right-to-left, then row 0 right-to-left
-      // [5, 4, 3, 2, 1, 0]
+      // Should be reading order: row 0 left-to-right, then row 1 left-to-right
+      // [0, 1, 2, 3, 4, 5]
       expect(list).toHaveLength(6);
-      expect(list[0].colorIndex).toBe(5);
-      expect(list[1].colorIndex).toBe(4);
-      expect(list[2].colorIndex).toBe(3);
-      expect(list[3].colorIndex).toBe(2);
-      expect(list[4].colorIndex).toBe(1);
-      expect(list[5].colorIndex).toBe(0);
+      expect(list[0].colorIndex).toBe(0);
+      expect(list[1].colorIndex).toBe(1);
+      expect(list[2].colorIndex).toBe(2);
+      expect(list[3].colorIndex).toBe(3);
+      expect(list[4].colorIndex).toBe(4);
+      expect(list[5].colorIndex).toBe(5);
     });
 
     it('should assign sequential positions starting from 1', () => {

@@ -3,6 +3,7 @@
 import { FC, useRef, useEffect, useState, useCallback } from 'react';
 import type { BeadPattern, ViewType, HighlightedBeads } from '@/types';
 import { colorToRgba } from '@/lib/utils';
+import { positionToCoordinates, getUsedHeight } from '@/lib/pattern';
 
 interface CanvasPanelProps {
   title: string;
@@ -297,7 +298,8 @@ function renderHighlights(
 
 /**
  * Render dimming overlay for completed beads
- * Reading order: bottom-to-top (y=0 is bottom), left-to-right
+ * Reading order: bottom-to-top (y=0 first), left-to-right (x=0 first)
+ * Uses positionToCoordinates to match TTS reading order
  */
 function renderCompletedOverlay(
   ctx: CanvasRenderingContext2D,
@@ -305,19 +307,18 @@ function renderCompletedOverlay(
   zoom: number,
   completedBeads: number
 ) {
+  const usedHeight = getUsedHeight(pattern);
+  if (usedHeight === 0) return;
+
   ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';  // Semi-transparent dark overlay
 
   for (let pos = 1; pos <= completedBeads; pos++) {
-    const zeroBasedPos = pos - 1;
-    const y = Math.floor(zeroBasedPos / pattern.width);
-    const x = zeroBasedPos % pattern.width;
-
-    // Skip if out of bounds
-    if (y >= pattern.height || x >= pattern.width) break;
+    const coord = positionToCoordinates(pos, pattern.width, usedHeight);
+    if (!coord) continue;
 
     // Convert to screen coordinates (y=0 is visual bottom)
-    const screenX = x * zoom;
-    const screenY = (pattern.height - 1 - y) * zoom;
+    const screenX = coord.x * zoom;
+    const screenY = (pattern.height - 1 - coord.y) * zoom;
 
     ctx.fillRect(screenX, screenY, zoom - 1, zoom - 1);
   }

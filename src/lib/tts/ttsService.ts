@@ -109,8 +109,8 @@ export function selectVoice(
 }
 
 /**
- * Generate bead list for TTS in stringing order (reversed)
- * Beads are read from bottom-right to top-left for stringing
+ * Generate bead list for TTS in reading order
+ * Beads are read from bottom-left to top-right (left-to-right, bottom-to-top)
  */
 export function generateBeadListForTTS(
   pattern: BeadPattern,
@@ -135,10 +135,10 @@ export function generateBeadListForTTS(
     }
   }
 
-  // Generate items in reverse order (stringing order)
+  // Generate items in reading order (left-to-right, bottom-to-top)
   let position = 1;
-  for (let y = usedHeight - 1; y >= 0; y--) {
-    for (let x = width - 1; x >= 0; x--) {
+  for (let y = 0; y < usedHeight; y++) {
+    for (let x = 0; x < width; x++) {
       const colorIndex = field[y * width + x];
       const color = colors[colorIndex];
       const colorName = getColorName(color?.name, language, colorIndex);

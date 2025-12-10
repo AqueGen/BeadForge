@@ -153,9 +153,9 @@ export function getPatternStats(pattern: BeadPattern): PatternStats {
 }
 
 /**
- * Convert TTS stringing position (1-based) to grid coordinates (x, y)
- * Stringing order is reverse: from bottom-right to top-left
- * y goes from usedHeight-1 to 0, x goes from width-1 to 0
+ * Convert TTS reading position (1-based) to grid coordinates (x, y)
+ * Reading order: bottom-to-top (y=0 first), left-to-right (x=0 first)
+ * This matches the order used in generateBeadListForTTS in ttsService.ts
  */
 export function positionToCoordinates(
   position: number,
@@ -167,8 +167,12 @@ export function positionToCoordinates(
   }
 
   const zeroBasedPos = position - 1;
-  const y = Math.floor(zeroBasedPos / width);  // Bottom to top (y=0 is visual bottom)
-  const x = zeroBasedPos % width;  // Left to right
+  const row = Math.floor(zeroBasedPos / width);  // 0-based row from bottom
+  const col = zeroBasedPos % width;              // 0-based col from left
+
+  // Convert to grid coordinates (direct mapping)
+  const y = row;   // y=0 is bottom, first in reading
+  const x = col;   // x=0 is left, first in reading
 
   return { x, y };
 }
@@ -176,7 +180,7 @@ export function positionToCoordinates(
 /**
  * Convert coordinates (x, y) to TTS reading position (1-based)
  * Inverse of positionToCoordinates
- * Reading order: bottom to top (y=0 is visual bottom), left to right
+ * Reading order: bottom-to-top (y=0 first), left-to-right (x=0 first)
  */
 export function coordinatesToPosition(
   pattern: BeadPattern,
@@ -189,8 +193,12 @@ export function coordinatesToPosition(
     return null;
   }
 
-  // Position = y * width + x + 1 (1-based)
-  return y * pattern.width + x + 1;
+  // Convert grid coordinates to reading order (direct mapping)
+  const row = y;  // row 0 = bottom (y=0)
+  const col = x;  // col 0 = left (x=0)
+
+  // Position = row * width + col + 1 (1-based)
+  return row * pattern.width + col + 1;
 }
 
 /**
