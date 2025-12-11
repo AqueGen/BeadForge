@@ -16,6 +16,9 @@ interface CanvasPanelProps {
   onBeadDrag?: (x: number, y: number) => void;
   highlightedBeads?: HighlightedBeads | null;
   completedBeads?: number;  // Number of beads completed (for dimming)
+  // Synchronized scrolling props
+  scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
+  onScroll?: (scrollTop: number, scrollLeft: number) => void;
 }
 
 export const CanvasPanel: FC<CanvasPanelProps> = ({
@@ -29,14 +32,27 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
   onBeadDrag,
   highlightedBeads,
   completedBeads = 0,
+  scrollContainerRef,
+  onScroll,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const internalScrollRef = useRef<HTMLDivElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
 
   // For simulation drag-to-shift
   const [isDraggingShift, setIsDraggingShift] = useState(false);
   const [dragStartX, setDragStartX] = useState(0);
   const [dragStartShift, setDragStartShift] = useState(0);
+
+  // Merge internal and external refs
+  const scrollRef = scrollContainerRef || internalScrollRef;
+
+  // Handle scroll events for synchronization
+  const handleScroll = useCallback(() => {
+    if (scrollRef.current && onScroll) {
+      onScroll(scrollRef.current.scrollTop, scrollRef.current.scrollLeft);
+    }
+  }, [scrollRef, onScroll]);
 
   // Render canvas
   useEffect(() => {
@@ -176,7 +192,11 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
         </div>
       </div>
 
-      <div className="custom-scrollbar flex-1 overflow-auto p-2">
+      <div
+        ref={scrollRef as React.RefObject<HTMLDivElement>}
+        className="custom-scrollbar flex-1 overflow-auto p-2"
+        onScroll={handleScroll}
+      >
         <canvas
           ref={canvasRef}
           className={

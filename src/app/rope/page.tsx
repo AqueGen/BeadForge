@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { Navigation } from '@/components/layout/Navigation';
 import { coordinatesToPosition } from '@/lib/pattern';
@@ -99,6 +99,37 @@ export default function RopeEditorPage() {
   const [editModeEnabled, setEditModeEnabled] = useState(false);
   const [ttsNavigateTarget, setTtsNavigateTarget] = useState<number | null>(null);
 
+  // Refs for synchronized scrolling
+  const draftScrollRef = useRef<HTMLDivElement>(null);
+  const correctedScrollRef = useRef<HTMLDivElement>(null);
+  const simulationScrollRef = useRef<HTMLDivElement>(null);
+  const isScrollSyncing = useRef(false);
+
+  // Synchronized scroll handler
+  const handleSyncScroll = useCallback((scrollTop: number, scrollLeft: number, source: 'draft' | 'corrected' | 'simulation') => {
+    if (isScrollSyncing.current) return;
+    isScrollSyncing.current = true;
+
+    const refs = {
+      draft: draftScrollRef,
+      corrected: correctedScrollRef,
+      simulation: simulationScrollRef,
+    };
+
+    // Sync all other panels
+    Object.entries(refs).forEach(([key, ref]) => {
+      if (key !== source && ref.current) {
+        ref.current.scrollTop = scrollTop;
+        ref.current.scrollLeft = scrollLeft;
+      }
+    });
+
+    // Reset flag after a short delay to allow the scroll events to settle
+    requestAnimationFrame(() => {
+      isScrollSyncing.current = false;
+    });
+  }, []);
+
   const handleCreatePattern = useCallback(
     (width: number, height: number) => {
       actions.reset(width, height);
@@ -156,9 +187,9 @@ export default function RopeEditorPage() {
   );
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen overflow-hidden">
       <Navigation />
-      <div className="flex flex-1 flex-col">
+      <div className="flex flex-1 flex-col overflow-hidden">
         {/* Header */}
         <header className="flex h-12 items-center justify-between border-b bg-white px-4">
         <div className="flex items-center gap-4">
@@ -199,9 +230,9 @@ export default function RopeEditorPage() {
         onLoadJBB={actions.loadJBB}
       />
 
-      <div className="flex flex-1">
+      <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
-        <aside className="w-52 border-r bg-white p-4">
+        <aside className="w-52 shrink-0 overflow-y-auto border-r bg-white p-4">
           <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
             Цвета
           </h3>
@@ -244,8 +275,8 @@ export default function RopeEditorPage() {
           </div>
         </aside>
 
-        {/* Canvas Area */}
-        <main className="flex flex-1 gap-4 overflow-auto bg-gray-200 p-4">
+        {/* Canvas Area - overflow-hidden to prevent page scroll */}
+        <main className="flex flex-1 gap-4 overflow-hidden bg-gray-200 p-4">
           <CanvasPanel
             title="Черновик (редактирование)"
             pattern={pattern}
@@ -255,6 +286,8 @@ export default function RopeEditorPage() {
             onBeadDrag={handleBeadDrag}
             highlightedBeads={highlightedBeads}
             completedBeads={completedBeads}
+            scrollContainerRef={draftScrollRef}
+            onScroll={(top, left) => handleSyncScroll(top, left, 'draft')}
           />
 
           <CanvasPanel
@@ -262,6 +295,8 @@ export default function RopeEditorPage() {
             pattern={pattern}
             zoom={zoom}
             viewType="corrected"
+            scrollContainerRef={correctedScrollRef}
+            onScroll={(top, left) => handleSyncScroll(top, left, 'corrected')}
           />
 
           <CanvasPanel
@@ -271,11 +306,13 @@ export default function RopeEditorPage() {
             viewType="simulation"
             shift={shift}
             onShiftChange={setShift}
+            scrollContainerRef={simulationScrollRef}
+            onScroll={(top, left) => handleSyncScroll(top, left, 'simulation')}
           />
         </main>
 
         {/* TTS Panel */}
-        <aside className="w-80 border-l bg-white">
+        <aside className="w-80 shrink-0 overflow-y-auto border-l bg-white">
           <TTSPanel
             pattern={pattern}
             onTTSStateChange={handleTTSStateChange}
