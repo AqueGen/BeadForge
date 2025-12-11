@@ -362,10 +362,21 @@ export default function BallEditorPage() {
             </div>
           )}
 
-          {/* Two Views Side by Side */}
+          {/* Two Views - Wrapped (main) and Flat (editing) */}
           {pattern ? (
-            <div className="flex flex-1 gap-4">
-              {/* Flat/Draft View (editable) */}
+            <div className="flex flex-1 flex-col gap-4">
+              {/* Wrapped/Simulation View - Full width like CrochetBeadPaint */}
+              <div className="flex-shrink-0">
+                <BallWrappedView
+                  pattern={pattern}
+                  zoom={zoom}
+                  offset={offset}
+                  highlightedBeads={highlightedBeads}
+                  completedBeads={completedBeads}
+                />
+              </div>
+
+              {/* Flat/Draft View (editable) - Below for reference */}
               <div className="flex-1">
                 <BallPatternCanvas
                   pattern={pattern}
@@ -373,17 +384,6 @@ export default function BallEditorPage() {
                   showGrid={true}
                   onBeadClick={handleBeadClick}
                   onBeadDrag={handleBeadDrag}
-                  highlightedBeads={highlightedBeads}
-                  completedBeads={completedBeads}
-                />
-              </div>
-
-              {/* Wrapped/Simulation View */}
-              <div className="w-80 flex-shrink-0">
-                <BallWrappedView
-                  pattern={pattern}
-                  zoom={zoom}
-                  offset={offset}
                   highlightedBeads={highlightedBeads}
                   completedBeads={completedBeads}
                 />

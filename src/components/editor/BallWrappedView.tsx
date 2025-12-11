@@ -13,9 +13,13 @@ interface BallWrappedViewProps {
   completedBeads?: number;
 }
 
+// Row number spacing for display
+const ROW_NUMBER_HEIGHT = 20;
+
 /**
  * Ball Wrapped View - Shows ball pattern as if wrapped around the ball
  * Similar to CrochetBeadPaint's middle view - demonstrates how wedges connect
+ * Uses round beads like the reference screenshots
  */
 export const BallWrappedView: FC<BallWrappedViewProps> = ({
   pattern,
@@ -33,40 +37,46 @@ export const BallWrappedView: FC<BallWrappedViewProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Calculate canvas dimensions for wrapped view
-    // Show one complete "repeat" - 6 wedges worth, with wrapping simulation
-    const displayWidth = pattern.wedgeBase * 3; // Show ~3 wedges worth for wrapped effect
+    // Show FULL pattern width to match CrochetBeadPaint reference
+    const displayWidth = pattern.width;
     const displayHeight = pattern.height;
 
+    // Bead size with small gap
+    const beadSize = zoom * 0.9;
+    const beadRadius = beadSize / 2;
+
     const canvasWidth = displayWidth * zoom;
-    const canvasHeight = displayHeight * zoom;
+    const canvasHeight = displayHeight * zoom + ROW_NUMBER_HEIGHT;
 
     canvas.width = canvasWidth;
     canvas.height = canvasHeight;
 
-    // Clear background
-    ctx.fillStyle = '#f5f5f5';
+    // Clear background - dark like CrochetBeadPaint
+    ctx.fillStyle = '#333333';
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-    // Render wrapped pattern
-    renderWrappedPattern(ctx, pattern, zoom, offset, displayWidth);
+    // Render wrapped pattern with round beads
+    renderWrappedPattern(ctx, pattern, zoom, offset, displayWidth, beadRadius);
 
     // Render completion overlay
     if (completedBeads > 0) {
-      renderWrappedCompletedOverlay(ctx, pattern, zoom, offset, completedBeads, displayWidth);
+      renderWrappedCompletedOverlay(ctx, pattern, zoom, offset, completedBeads, displayWidth, beadRadius);
     }
 
     // Render highlights
     if (highlightedBeads && highlightedBeads.positions.length > 0) {
-      renderWrappedHighlights(ctx, pattern, highlightedBeads, zoom, offset, displayWidth);
+      renderWrappedHighlights(ctx, pattern, highlightedBeads, zoom, offset, displayWidth, beadRadius);
     }
+
+    // Render row numbers at the bottom
+    renderRowNumbers(ctx, pattern, zoom, displayHeight);
   }, [pattern, zoom, offset, highlightedBeads, completedBeads]);
 
   return (
     <div className="flex flex-col overflow-hidden rounded-lg bg-white shadow">
       <div className="border-b bg-gray-50 px-4 py-2">
         <h4 className="text-sm font-medium text-gray-700">
-          Симуляция (offset: {offset})
+          Симуляция (смещение: {offset})
         </h4>
       </div>
 
@@ -78,15 +88,17 @@ export const BallWrappedView: FC<BallWrappedViewProps> = ({
 };
 
 /**
- * Render the wrapped/simulated ball pattern
+ * Render the wrapped/simulated ball pattern with ROUND beads
  * Shows how wedges connect when wrapped around the ball
+ * Matches CrochetBeadPaint visual style
  */
 function renderWrappedPattern(
   ctx: CanvasRenderingContext2D,
   pattern: BallPattern,
   zoom: number,
   offset: number,
-  displayWidth: number
+  displayWidth: number,
+  beadRadius: number
 ) {
   const { height, field, colors, width, wedgeBase } = pattern;
 
@@ -107,49 +119,60 @@ function renderWrappedPattern(
       const color = colors[colorIndex] || colors[0];
       const rgba = colorToRgba(color);
 
-      // Convert grid coords to canvas coords
-      const canvasX = displayX * zoom;
-      const canvasY = (height - 1 - y) * zoom;
+      // Convert grid coords to canvas center coords for circles
+      const centerX = displayX * zoom + zoom / 2;
+      const centerY = (height - 1 - y) * zoom + zoom / 2;
 
+      // Draw round bead
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, beadRadius, 0, Math.PI * 2);
       ctx.fillStyle = rgba;
-      ctx.fillRect(canvasX, canvasY, zoom - 1, zoom - 1);
+      ctx.fill();
+
+      // Add subtle border for definition
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
     }
   }
 
-  // Draw subtle grid
-  if (zoom >= 8) {
-    ctx.strokeStyle = '#ddd';
-    ctx.lineWidth = 0.5;
-
-    for (let y = 0; y < height; y++) {
-      const rowOffset = Math.floor(y * offset) % wedgeBase;
-
-      for (let displayX = 0; displayX < displayWidth; displayX++) {
-        const actualX = (displayX + rowOffset) % width;
-
-        if (!isPositionInWedge(pattern, actualX, y)) {
-          continue;
-        }
-
-        const canvasX = displayX * zoom;
-        const canvasY = (height - 1 - y) * zoom;
-        ctx.strokeRect(canvasX, canvasY, zoom - 1, zoom - 1);
-      }
-    }
-  }
-
-  // Draw center line (equator)
-  ctx.strokeStyle = '#999';
+  // Draw center line (equator) - dashed for better visibility
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
   ctx.lineWidth = 2;
+  ctx.setLineDash([5, 5]);
   const midY = pattern.wedgeHeight * zoom;
   ctx.beginPath();
   ctx.moveTo(0, midY);
   ctx.lineTo(displayWidth * zoom, midY);
   ctx.stroke();
+  ctx.setLineDash([]);
 }
 
 /**
- * Render dimming overlay for completed beads in wrapped view
+ * Render row numbers at the bottom of the canvas
+ */
+function renderRowNumbers(
+  ctx: CanvasRenderingContext2D,
+  pattern: BallPattern,
+  zoom: number,
+  displayHeight: number
+) {
+  const { width } = pattern;
+  const yPos = displayHeight * zoom + 15;
+
+  ctx.fillStyle = '#666';
+  ctx.font = '10px Arial';
+  ctx.textAlign = 'center';
+
+  // Show row numbers every 5 columns
+  for (let x = 0; x < width; x += 5) {
+    const xPos = x * zoom + zoom / 2;
+    ctx.fillText(String(x), xPos, yPos);
+  }
+}
+
+/**
+ * Render dimming overlay for completed beads in wrapped view (round beads)
  */
 function renderWrappedCompletedOverlay(
   ctx: CanvasRenderingContext2D,
@@ -157,9 +180,10 @@ function renderWrappedCompletedOverlay(
   zoom: number,
   offset: number,
   completedBeads: number,
-  displayWidth: number
+  displayWidth: number,
+  beadRadius: number
 ) {
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
 
   let beadCount = 0;
   const { height, width, wedgeBase } = pattern;
@@ -178,9 +202,13 @@ function renderWrappedCompletedOverlay(
         const displayX = (x - rowOffset + width) % width;
 
         if (displayX < displayWidth) {
-          const canvasX = displayX * zoom;
-          const canvasY = (height - 1 - y) * zoom;
-          ctx.fillRect(canvasX, canvasY, zoom - 1, zoom - 1);
+          const centerX = displayX * zoom + zoom / 2;
+          const centerY = (height - 1 - y) * zoom + zoom / 2;
+
+          // Draw round overlay
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, beadRadius, 0, Math.PI * 2);
+          ctx.fill();
         }
       }
     }
@@ -188,7 +216,7 @@ function renderWrappedCompletedOverlay(
 }
 
 /**
- * Render highlights for currently spoken beads in wrapped view
+ * Render highlights for currently spoken beads in wrapped view (round beads)
  */
 function renderWrappedHighlights(
   ctx: CanvasRenderingContext2D,
@@ -196,33 +224,29 @@ function renderWrappedHighlights(
   highlightedBeads: HighlightedBeads,
   zoom: number,
   offset: number,
-  displayWidth: number
+  displayWidth: number,
+  beadRadius: number
 ) {
   const { height, width, wedgeBase } = pattern;
 
-  ctx.strokeStyle = '#ff0000';
-  ctx.lineWidth = 3;
-
   for (const pos of highlightedBeads.positions) {
     const rowOffset = Math.floor(pos.y * offset) % wedgeBase;
     const displayX = (pos.x - rowOffset + width) % width;
 
     if (displayX < displayWidth) {
-      const screenX = displayX * zoom;
-      const screenY = (height - 1 - pos.y) * zoom;
-      ctx.strokeRect(screenX - 1, screenY - 1, zoom + 1, zoom + 1);
-    }
-  }
+      const centerX = displayX * zoom + zoom / 2;
+      const centerY = (height - 1 - pos.y) * zoom + zoom / 2;
 
-  ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
-  for (const pos of highlightedBeads.positions) {
-    const rowOffset = Math.floor(pos.y * offset) % wedgeBase;
-    const displayX = (pos.x - rowOffset + width) % width;
+      // Draw highlight fill
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, beadRadius + 2, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+      ctx.fill();
 
-    if (displayX < displayWidth) {
-      const screenX = displayX * zoom;
-      const screenY = (height - 1 - pos.y) * zoom;
-      ctx.fillRect(screenX, screenY, zoom - 1, zoom - 1);
+      // Draw highlight border
+      ctx.strokeStyle = '#ff0000';
+      ctx.lineWidth = 3;
+      ctx.stroke();
     }
   }
 }
