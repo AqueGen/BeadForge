@@ -127,6 +127,7 @@ export default function BallEditorPage() {
   const [highlightedBeads, setHighlightedBeads] = useState<HighlightedBeads | null>(null);
   const [completedBeads, setCompletedBeads] = useState(0);
   const [ttsNavigationMode, setTtsNavigationMode] = useState(false);
+  const [editModeEnabled, setEditModeEnabled] = useState(false);
   const [ttsNavigateTarget, setTtsNavigateTarget] = useState<number | null>(null);
 
   const handleCreatePattern = useCallback(
@@ -149,26 +150,33 @@ export default function BallEditorPage() {
         return;
       }
 
-      if (tool === 'pencil') {
-        actions.setBead(x, y, selectedColor);
-      } else if (tool === 'fill') {
-        actions.floodFill(x, y, selectedColor);
-      } else if (tool === 'pipette') {
-        const colorIndex = pattern.field[y * pattern.width + x];
-        setSelectedColor(colorIndex);
-        setTool('pencil');
+      // Handle edit mode - only allow editing when enabled
+      if (editModeEnabled) {
+        if (tool === 'pencil') {
+          actions.setBead(x, y, selectedColor);
+        } else if (tool === 'fill') {
+          actions.floodFill(x, y, selectedColor);
+        } else if (tool === 'pipette') {
+          const colorIndex = pattern.field[y * pattern.width + x];
+          setSelectedColor(colorIndex);
+          setTool('pencil');
+        }
+        return;
       }
+
+      // If no mode is enabled, do nothing
     },
-    [tool, selectedColor, actions, pattern, ttsNavigationMode]
+    [tool, selectedColor, actions, pattern, ttsNavigationMode, editModeEnabled]
   );
 
   const handleBeadDrag = useCallback(
     (x: number, y: number) => {
-      if (tool === 'pencil') {
+      // Only allow dragging when edit mode is enabled
+      if (editModeEnabled && tool === 'pencil') {
         actions.setBead(x, y, selectedColor);
       }
     },
-    [tool, selectedColor, actions]
+    [tool, selectedColor, actions, editModeEnabled]
   );
 
   const handleShowStats = useCallback(() => {
@@ -364,6 +372,7 @@ export default function BallEditorPage() {
               }}
               onCompletedBeadsChange={setCompletedBeads}
               onNavigationModeChange={setTtsNavigationMode}
+              onEditModeChange={setEditModeEnabled}
               navigateToPosition={ttsNavigateTarget}
               onNavigateComplete={() => setTtsNavigateTarget(null)}
             />

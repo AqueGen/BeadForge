@@ -18,6 +18,7 @@ interface BallTTSPanelProps {
   onTTSStateChange?: (position: number, groupCount: number, isPlaying: boolean) => void;
   onCompletedBeadsChange?: (completedBeads: number) => void;
   onNavigationModeChange?: (enabled: boolean) => void;
+  onEditModeChange?: (enabled: boolean) => void;
   navigateToPosition?: number | null;
   onNavigateComplete?: () => void;
 }
@@ -28,6 +29,7 @@ export function BallTTSPanel({
   onTTSStateChange,
   onCompletedBeadsChange,
   onNavigationModeChange,
+  onEditModeChange,
   navigateToPosition,
   onNavigateComplete,
 }: BallTTSPanelProps) {
@@ -57,6 +59,7 @@ export function BallTTSPanel({
   // Progress tracking
   const [completedBeads, setCompletedBeads] = useState(0);
   const [navigationMode, setNavigationMode] = useState(false);
+  const [editMode, setEditMode] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const t = UI_TRANSLATIONS[settings.language];
@@ -106,6 +109,11 @@ export function BallTTSPanel({
   useEffect(() => {
     onNavigationModeChange?.(navigationMode);
   }, [navigationMode, onNavigationModeChange]);
+
+  // Notify parent about edit mode changes
+  useEffect(() => {
+    onEditModeChange?.(editMode);
+  }, [editMode, onEditModeChange]);
 
   // Handle navigation from bead click
   useEffect(() => {
@@ -167,7 +175,25 @@ export function BallTTSPanel({
   );
 
   const handleNavigationToggle = useCallback(() => {
-    setNavigationMode((prev) => !prev);
+    setNavigationMode((prev) => {
+      const newValue = !prev;
+      // Disable edit mode when enabling navigation mode
+      if (newValue) {
+        setEditMode(false);
+      }
+      return newValue;
+    });
+  }, []);
+
+  const handleEditToggle = useCallback(() => {
+    setEditMode((prev) => {
+      const newValue = !prev;
+      // Disable navigation mode when enabling edit mode
+      if (newValue) {
+        setNavigationMode(false);
+      }
+      return newValue;
+    });
   }, []);
 
   const handleResetClick = useCallback(() => {
@@ -316,8 +342,22 @@ export function BallTTSPanel({
             </span>
           </div>
 
-          {/* Navigation mode toggle */}
+          {/* Mode toggles - Edit and Navigation */}
           <div className="flex items-center gap-2 mb-2">
+            <button
+              onClick={handleEditToggle}
+              className={`flex-1 px-3 py-2 text-sm rounded border transition-colors ${
+                editMode
+                  ? 'bg-green-500 text-white border-green-500'
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              {settings.language === 'uk'
+                ? (editMode ? '✏️ Редагування ВКЛ' : '✏️ Редагування')
+                : settings.language === 'ru'
+                  ? (editMode ? '✏️ Редактирование ВКЛ' : '✏️ Редактирование')
+                  : (editMode ? '✏️ Edit ON' : '✏️ Edit Mode')}
+            </button>
             <button
               onClick={handleNavigationToggle}
               className={`flex-1 px-3 py-2 text-sm rounded border transition-colors ${
@@ -327,12 +367,23 @@ export function BallTTSPanel({
               }`}
             >
               {settings.language === 'uk'
-                ? (navigationMode ? '🎯 Режим навігації ВКЛ' : '🎯 Режим навігації')
+                ? (navigationMode ? '🎯 Навігація ВКЛ' : '🎯 Навігація')
                 : settings.language === 'ru'
-                  ? (navigationMode ? '🎯 Режим навигации ВКЛ' : '🎯 Режим навигации')
-                  : (navigationMode ? '🎯 Navigation ON' : '🎯 Navigation Mode')}
+                  ? (navigationMode ? '🎯 Навигация ВКЛ' : '🎯 Навигация')
+                  : (navigationMode ? '🎯 Navigate ON' : '🎯 Navigate')}
             </button>
           </div>
+
+          {/* Edit mode hint */}
+          {editMode && (
+            <p className="text-xs text-green-600 mb-2">
+              {settings.language === 'uk'
+                ? 'Натисніть на бусину, щоб змінити її колір'
+                : settings.language === 'ru'
+                  ? 'Нажмите на бусину, чтобы изменить её цвет'
+                  : 'Click on a bead to change its color'}
+            </p>
+          )}
 
           {/* Navigation mode hint */}
           {navigationMode && (
