@@ -64,21 +64,7 @@ const FLOWER_COLORS: BeadColor[] = [
   { r: 34, g: 139, b: 34, name: 'Green' },    // 3 - Stem/Leaves
 ];
 
-// Sample Pattern 1: Simple stripes (Red, White, Blue)
-const STRIPES_DATA = [
-  [2, 2, 2, 2, 2, 2, 2, 2], // Red
-  [2, 2, 2, 2, 2, 2, 2, 2], // Red
-  [0, 0, 0, 0, 0, 0, 0, 0], // White
-  [0, 0, 0, 0, 0, 0, 0, 0], // White
-  [4, 4, 4, 4, 4, 4, 4, 4], // Blue
-  [4, 4, 4, 4, 4, 4, 4, 4], // Blue
-  [2, 2, 2, 2, 2, 2, 2, 2], // Red
-  [2, 2, 2, 2, 2, 2, 2, 2], // Red
-  [0, 0, 0, 0, 0, 0, 0, 0], // White
-  [0, 0, 0, 0, 0, 0, 0, 0], // White
-];
-
-// Sample Pattern 2: Checkerboard (Black and White)
+// Sample Pattern 1: Checkerboard (Black and White)
 const CHECKERBOARD_DATA = [
   [0, 1, 0, 1, 0, 1, 0, 1],
   [1, 0, 1, 0, 1, 0, 1, 0],
@@ -126,7 +112,6 @@ const FLOWER_DATA = [
 
 // Create sample patterns
 export const SAMPLE_PATTERNS: Map<string, BeadPattern> = new Map([
-  ['stripes', createPatternFromArray('Stripes (Red-White-Blue)', STRIPES_DATA, SIMPLE_COLORS)],
   ['checkerboard', createPatternFromArray('Checkerboard', CHECKERBOARD_DATA, SIMPLE_COLORS)],
   ['ukraine', createPatternFromArray('Ukraine Flag', UKRAINE_DATA, FLAG_COLORS)],
   ['flower', createPatternFromArray('Flower', FLOWER_DATA, FLOWER_COLORS)],
@@ -135,7 +120,6 @@ export const SAMPLE_PATTERNS: Map<string, BeadPattern> = new Map([
 // Get list of available sample patterns
 export function getSamplePatternList(): SamplePatternInfo[] {
   return [
-    { id: 'stripes', name: 'Stripes (Red-White-Blue)', description: 'Simple striped pattern' },
     { id: 'checkerboard', name: 'Checkerboard', description: 'Black and white checkerboard' },
     { id: 'ukraine', name: 'Ukraine Flag', description: 'Blue and yellow flag pattern' },
     { id: 'flower', name: 'Flower', description: 'Pink flower with yellow center' },

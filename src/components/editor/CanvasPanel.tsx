@@ -33,6 +33,11 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
 
+  // For simulation drag-to-shift
+  const [isDraggingShift, setIsDraggingShift] = useState(false);
+  const [dragStartX, setDragStartX] = useState(0);
+  const [dragStartShift, setDragStartShift] = useState(0);
+
   // Render canvas
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -108,6 +113,14 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
+      // Handle simulation drag-to-shift
+      if (viewType === 'simulation' && onShiftChange) {
+        setIsDraggingShift(true);
+        setDragStartX(e.clientX);
+        setDragStartShift(shift);
+        return;
+      }
+
       if (viewType !== 'draft') return;
 
       const pos = getGridPosition(e);
@@ -116,11 +129,21 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
         setIsDrawing(true);
       }
     },
-    [viewType, getGridPosition, onBeadClick]
+    [viewType, getGridPosition, onBeadClick, onShiftChange, shift]
   );
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
+      // Handle simulation drag-to-shift
+      if (isDraggingShift && viewType === 'simulation' && onShiftChange) {
+        const deltaX = e.clientX - dragStartX;
+        // Convert pixel drag to shift units (negative because dragging right = shift left visually)
+        const shiftDelta = Math.round(-deltaX / (zoom * 0.5));
+        const newShift = dragStartShift + shiftDelta;
+        onShiftChange(newShift);
+        return;
+      }
+
       if (!isDrawing || viewType !== 'draft') return;
 
       const pos = getGridPosition(e);
@@ -128,23 +151,41 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
         onBeadDrag(pos.x, pos.y);
       }
     },
-    [isDrawing, viewType, getGridPosition, onBeadDrag]
+    [isDrawing, isDraggingShift, viewType, getGridPosition, onBeadDrag, onShiftChange, dragStartX, dragStartShift, zoom]
   );
 
   const handleMouseUp = useCallback(() => {
     setIsDrawing(false);
+    setIsDraggingShift(false);
   }, []);
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden rounded-lg bg-white shadow">
+    <div className="relative flex flex-1 flex-col overflow-hidden rounded-lg bg-white shadow">
       <div className="border-b bg-gray-50 px-4 py-2">
-        <h4 className="text-sm font-medium text-gray-700">{title}</h4>
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-medium text-gray-700">{title}</h4>
+          {viewType === 'simulation' && onShiftChange && (
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-gray-400">← Зажмите ЛКМ и тяните →</span>
+              <div className="flex items-center gap-1 rounded bg-white px-2 py-0.5 text-xs shadow-sm">
+                <span className="text-gray-400">сдвиг:</span>
+                <span className="font-bold text-gray-700">{shift}</span>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="custom-scrollbar flex-1 overflow-auto p-2">
         <canvas
           ref={canvasRef}
-          className={viewType === 'draft' ? 'cursor-crosshair' : 'cursor-default'}
+          className={
+            viewType === 'draft'
+              ? 'cursor-crosshair'
+              : viewType === 'simulation'
+                ? 'cursor-grab active:cursor-grabbing'
+                : 'cursor-default'
+          }
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
@@ -152,22 +193,6 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
         />
       </div>
 
-      {viewType === 'simulation' && onShiftChange && (
-        <div className="flex justify-center gap-2 border-t p-2">
-          <button
-            onClick={() => onShiftChange(shift - 1)}
-            className="rounded border px-3 py-1 text-sm hover:bg-gray-50"
-          >
-            ⬅️
-          </button>
-          <button
-            onClick={() => onShiftChange(shift + 1)}
-            className="rounded border px-3 py-1 text-sm hover:bg-gray-50"
-          >
-            ➡️
-          </button>
-        </div>
-      )}
     </div>
   );
 };
