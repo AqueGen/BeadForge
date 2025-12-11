@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { BallPattern } from '@/types';
 import {
   createBallPattern,
@@ -13,8 +13,11 @@ import {
   copyWedgeToAll,
   mirrorWedgeHorizontally,
   loadJBBBall,
+  downloadJBBBall,
 } from '@/lib/pattern';
 import { floodFillBallPattern } from '@/lib/pattern/ballDrawing';
+
+const BALL_PATTERN_STORAGE_KEY = 'beadforge_ball_pattern';
 
 export interface BallPatternStats {
   diameter: number;
@@ -36,6 +39,8 @@ export interface UseBallPatternReturn {
     mirrorWedge: (wedgeIdx: number) => void;
     save: () => void;
     load: (file: File) => Promise<void>;
+    saveJBB: () => void;
+    loadJBB: (file: File) => Promise<void>;
     create: (diameter: number, name?: string) => void;
     getStats: () => BallPatternStats | null;
   };
@@ -43,6 +48,40 @@ export interface UseBallPatternReturn {
 
 export function useBallPattern(): UseBallPatternReturn {
   const [pattern, setPattern] = useState<BallPattern | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Load pattern from localStorage on initial mount
+  useEffect(() => {
+    if (isInitialized) return;
+
+    try {
+      const saved = localStorage.getItem(BALL_PATTERN_STORAGE_KEY);
+      if (saved) {
+        const dto = JSON.parse(saved);
+        if (dto.type === 'ball') {
+          const loaded = dtoToBallPattern(dto);
+          setPattern(loaded);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load ball pattern from localStorage:', e);
+    }
+    setIsInitialized(true);
+  }, [isInitialized]);
+
+  // Save pattern to localStorage when it changes
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    if (pattern) {
+      try {
+        const dto = ballPatternToDto(pattern);
+        localStorage.setItem(BALL_PATTERN_STORAGE_KEY, JSON.stringify(dto));
+      } catch (e) {
+        console.error('Failed to save ball pattern to localStorage:', e);
+      }
+    }
+  }, [pattern, isInitialized]);
 
   const create = useCallback((diameter: number, name?: string) => {
     const newPattern = createBallPattern(diameter, name);
@@ -142,6 +181,17 @@ export function useBallPattern(): UseBallPatternReturn {
     setPattern(loaded);
   }, []);
 
+  const saveJBB = useCallback(() => {
+    if (!pattern) return;
+    downloadJBBBall(pattern, `${pattern.name || 'ball-pattern'}.jbb`);
+  }, [pattern]);
+
+  const loadJBB = useCallback(async (file: File) => {
+    const text = await file.text();
+    const loaded = loadJBBBall(text, file.name);
+    setPattern(loaded);
+  }, []);
+
   const getStats = useCallback((): BallPatternStats | null => {
     if (!pattern) return null;
 
@@ -165,6 +215,8 @@ export function useBallPattern(): UseBallPatternReturn {
       mirrorWedge: handleMirrorWedge,
       save,
       load,
+      saveJBB,
+      loadJBB,
       create,
       getStats,
     }),
@@ -177,6 +229,8 @@ export function useBallPattern(): UseBallPatternReturn {
       handleMirrorWedge,
       save,
       load,
+      saveJBB,
+      loadJBB,
       create,
       getStats,
     ]

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Header } from '@/components/layout/Header';
+import Link from 'next/link';
+import { Navigation } from '@/components/layout/Navigation';
 import { Toolbar } from '@/components/editor/Toolbar';
 import { ColorPalette } from '@/components/editor/ColorPalette';
 import { BallPatternCanvas } from '@/components/editor/BallPatternCanvas';
@@ -34,11 +35,11 @@ function NewBallPatternDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="w-96 rounded-lg bg-white p-6 shadow-xl">
-        <h2 className="mb-4 text-lg font-semibold">New Ball Pattern</h2>
+        <h2 className="mb-4 text-lg font-semibold">Новая схема шара</h2>
 
         <div className="mb-4">
           <label className="mb-2 block text-sm font-medium text-gray-700">
-            Ball Diameter
+            Диаметр шара
           </label>
           <div className="grid grid-cols-2 gap-2">
             {BALL_SIZE_CONFIGS.map((cfg) => (
@@ -51,9 +52,9 @@ function NewBallPatternDialog({
                     : 'border-gray-200 hover:bg-gray-50'
                 }`}
               >
-                <div className="font-medium">{cfg.diameter} cm</div>
+                <div className="font-medium">{cfg.diameter} см</div>
                 <div className="text-xs text-gray-500">
-                  {cfg.circumference} beads around
+                  {cfg.circumference} бусин в обхвате
                 </div>
               </button>
             ))}
@@ -63,10 +64,10 @@ function NewBallPatternDialog({
         {config && (
           <div className="mb-4 rounded bg-gray-50 p-3 text-sm">
             <div className="grid grid-cols-2 gap-2 text-gray-600">
-              <div>Wedge base: {config.wedgeBase} beads</div>
-              <div>Wedge height: {config.wedgeHeight} rows</div>
-              <div>6 top wedges + 6 bottom wedges</div>
-              <div>Linear taper (-1/row)</div>
+              <div>Основание клина: {config.wedgeBase}</div>
+              <div>Высота клина: {config.wedgeHeight}</div>
+              <div>6 верхних + 6 нижних клиньев</div>
+              <div>Линейное сужение (-1/ряд)</div>
             </div>
           </div>
         )}
@@ -76,13 +77,13 @@ function NewBallPatternDialog({
             onClick={onClose}
             className="rounded border px-4 py-2 text-sm hover:bg-gray-50"
           >
-            Cancel
+            Отмена
           </button>
           <button
             onClick={handleCreate}
             className="rounded bg-primary-500 px-4 py-2 text-sm text-white hover:bg-primary-600"
           >
-            Create
+            Создать
           </button>
         </div>
       </div>
@@ -117,7 +118,7 @@ export default function BallEditorPage() {
   const [selectedColor, setSelectedColor] = useState(1);
   const [tool, setTool] = useState<DrawingTool>('pencil');
   const [zoom, setZoom] = useState(15);
-  const [showNewDialog, setShowNewDialog] = useState(true); // Show dialog on first load
+  const [showNewDialog, setShowNewDialog] = useState(false); // Don't show dialog - try to load saved pattern first
   const [highlightedBeads, setHighlightedBeads] = useState<HighlightedBeads | null>(null);
   const [completedBeads, setCompletedBeads] = useState(0);
   const [ttsNavigationMode, setTtsNavigationMode] = useState(false);
@@ -177,11 +178,11 @@ export default function BallEditorPage() {
     const stats = actions.getStats();
     if (stats) {
       alert(
-        `Diameter: ${stats.diameter} cm\n` +
-        `Circumference: ${stats.circumference} beads\n` +
-        `Wedge base: ${stats.wedgeBase} beads\n` +
-        `Wedge height: ${stats.wedgeHeight} rows\n` +
-        `Total beads: ${stats.totalBeads}`
+        `Диаметр: ${stats.diameter} см\n` +
+        `Обхват: ${stats.circumference} бусин\n` +
+        `Основание клина: ${stats.wedgeBase} бусин\n` +
+        `Высота клина: ${stats.wedgeHeight} рядов\n` +
+        `Всего бусин: ${stats.totalBeads}`
       );
     }
   }, [actions]);
@@ -199,8 +200,27 @@ export default function BallEditorPage() {
   );
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <Header patternName={pattern?.name || 'Ball Pattern'} />
+    <div className="flex min-h-screen">
+      <Navigation />
+      <div className="flex flex-1 flex-col">
+        {/* Header */}
+        <header className="flex h-12 items-center justify-between border-b bg-white px-4">
+        <div className="flex items-center gap-4">
+          <Link href="/" className="text-xl font-bold text-primary-600 hover:text-primary-700">
+            BeadForge
+          </Link>
+          <span className="text-gray-400">|</span>
+          <span className="text-sm text-gray-600">{pattern?.name || 'Шар'}</span>
+        </div>
+        <nav className="flex items-center gap-2">
+          <Link
+            href="/rope"
+            className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
+          >
+            ← Жгут
+          </Link>
+        </nav>
+      </header>
 
       <Toolbar
         tool={tool}
@@ -220,13 +240,15 @@ export default function BallEditorPage() {
         onLoad={actions.load}
         onNew={() => setShowNewDialog(true)}
         onShowStats={handleShowStats}
+        onSaveJBB={() => actions.saveJBB()}
+        onLoadJBB={actions.loadJBB}
       />
 
       <div className="flex flex-1">
         {/* Sidebar */}
         <aside className="w-52 border-r bg-white p-4">
           <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-            Colors
+            Цвета
           </h3>
           <ColorPalette
             colors={DEFAULT_COLORS}
@@ -238,22 +260,22 @@ export default function BallEditorPage() {
           {pattern && (
             <div className="mt-6 border-t pt-4">
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                Wedge Operations
+                Операции с клиньями
               </h3>
               <div className="space-y-2">
                 <button
                   onClick={() => actions.copyWedgeToAll(0, true)}
                   className="w-full rounded border px-2 py-1 text-xs hover:bg-gray-50"
-                  title="Copy first top wedge to all other top wedges"
+                  title="Скопировать первый верхний клин во все верхние"
                 >
-                  Copy Top Wedge 1 → All Top
+                  Верх 1 → все верхние
                 </button>
                 <button
                   onClick={() => actions.copyWedgeToAll(6, true)}
                   className="w-full rounded border px-2 py-1 text-xs hover:bg-gray-50"
-                  title="Copy first bottom wedge to all other bottom wedges"
+                  title="Скопировать первый нижний клин во все нижние"
                 >
-                  Copy Bottom Wedge 1 → All Bottom
+                  Низ 1 → все нижние
                 </button>
                 <button
                   onClick={() => {
@@ -263,16 +285,16 @@ export default function BallEditorPage() {
                     }
                   }}
                   className="w-full rounded border px-2 py-1 text-xs hover:bg-gray-50"
-                  title="Copy all top wedges to bottom wedges"
+                  title="Скопировать все верхние клинья в нижние"
                 >
-                  Copy Top → Bottom
+                  Верх → Низ
                 </button>
                 <button
                   onClick={() => actions.mirrorWedge(0)}
                   className="w-full rounded border px-2 py-1 text-xs hover:bg-gray-50"
-                  title="Mirror first top wedge horizontally"
+                  title="Отзеркалить первый верхний клин горизонтально"
                 >
-                  Mirror Top Wedge 1
+                  Зеркало (верх 1)
                 </button>
               </div>
             </div>
@@ -280,27 +302,27 @@ export default function BallEditorPage() {
 
           <div className="mt-6 border-t pt-4">
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-              Info
+              Информация
             </h3>
             {pattern ? (
               <>
                 <p className="text-xs text-gray-600">
-                  Diameter: {pattern.diameter} cm
+                  Диаметр: {pattern.diameter} см
                 </p>
                 <p className="text-xs text-gray-600">
-                  Circumference: {pattern.circumference} beads
+                  Обхват: {pattern.circumference} бусин
                 </p>
                 <p className="text-xs text-gray-600">
-                  Wedge: {pattern.wedgeBase} × {pattern.wedgeHeight}
+                  Клин: {pattern.wedgeBase} × {pattern.wedgeHeight}
                 </p>
-                <p className="text-xs text-gray-600">Tool: {tool}</p>
+                <p className="text-xs text-gray-600">Инструмент: {tool}</p>
                 <p className="text-xs text-gray-600">
-                  Color: {DEFAULT_COLORS[selectedColor]?.name || `#${selectedColor}`}
+                  Цвет: {DEFAULT_COLORS[selectedColor]?.name || `#${selectedColor}`}
                 </p>
               </>
             ) : (
               <p className="text-xs text-gray-500">
-                Create a ball pattern to start
+                Создайте схему шара
               </p>
             )}
           </div>
@@ -321,12 +343,12 @@ export default function BallEditorPage() {
           ) : (
             <div className="flex flex-1 items-center justify-center">
               <div className="text-center text-gray-500">
-                <p className="mb-4 text-lg">No ball pattern created</p>
+                <p className="mb-4 text-lg">Схема шара не создана</p>
                 <button
                   onClick={() => setShowNewDialog(true)}
                   className="rounded bg-primary-500 px-4 py-2 text-white hover:bg-primary-600"
                 >
-                  Create New Ball Pattern
+                  Создать новую схему
                 </button>
               </div>
             </div>
@@ -347,7 +369,7 @@ export default function BallEditorPage() {
             />
           ) : (
             <div className="p-4 text-center text-gray-500">
-              Create a pattern to use TTS
+              Создайте схему для использования озвучки
             </div>
           )}
         </aside>
@@ -359,6 +381,7 @@ export default function BallEditorPage() {
         onClose={() => setShowNewDialog(false)}
         onCreate={handleCreatePattern}
       />
+      </div>
     </div>
   );
 }

@@ -1,278 +1,138 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
-import { coordinatesToPosition } from '@/lib/pattern';
-import { Header } from '@/components/layout/Header';
-import { Toolbar } from '@/components/editor/Toolbar';
-import { ColorPalette } from '@/components/editor/ColorPalette';
-import { CanvasPanel } from '@/components/editor/CanvasPanel';
-import { TTSPanel } from '@/components/tts';
-import { usePattern } from '@/hooks/usePattern';
-import { getSamplePatternList, getHighlightedBeads } from '@/lib/pattern';
-import { DEFAULT_COLORS, type DrawingTool, type HighlightedBeads } from '@/types';
+import Link from 'next/link';
 
-const SAMPLE_PATTERNS = getSamplePatternList();
-
-// New Pattern Dialog component
-function NewPatternDialog({
-  isOpen,
-  onClose,
-  onCreate,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  onCreate: (width: number, height: number) => void;
-}) {
-  const [width, setWidth] = useState(8);
-  const [height, setHeight] = useState(100);
-
-  if (!isOpen) return null;
-
-  const handleCreate = () => {
-    onCreate(width, height);
-    onClose();
-  };
-
+export default function HomePage() {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-80 rounded-lg bg-white p-6 shadow-xl">
-        <h2 className="mb-4 text-lg font-semibold">New Pattern</h2>
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100">
+      {/* Header */}
+      <header className="bg-white shadow-sm">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <h1 className="text-2xl font-bold text-primary-600">BeadForge</h1>
+        </div>
+      </header>
 
-        <div className="mb-4">
-          <label className="mb-1 block text-sm font-medium text-gray-700">
-            Width (circumference): 3-50
-          </label>
-          <input
-            type="number"
-            min={3}
-            max={50}
-            value={width}
-            onChange={(e) => setWidth(Math.min(50, Math.max(3, parseInt(e.target.value) || 3)))}
-            className="w-full rounded border px-3 py-2"
-          />
+      {/* Main Content */}
+      <main className="max-w-4xl mx-auto px-4 py-12">
+        {/* Hero Section */}
+        <div className="text-center mb-12">
+          <h2 className="text-4xl font-bold text-gray-900 mb-4">
+            Редактор схем для бисероплетения
+          </h2>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            Создавайте и редактируйте схемы для вязаных жгутов и оплетённых бусин.
+            Встроенная озвучка цветов поможет при плетении.
+          </p>
         </div>
 
-        <div className="mb-6">
-          <label className="mb-1 block text-sm font-medium text-gray-700">
-            Height (rows): 1-1000
-          </label>
-          <input
-            type="number"
-            min={1}
-            max={1000}
-            value={height}
-            onChange={(e) => setHeight(Math.min(1000, Math.max(1, parseInt(e.target.value) || 1)))}
-            className="w-full rounded border px-3 py-2"
-          />
-        </div>
-
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="rounded border px-4 py-2 text-sm hover:bg-gray-50"
+        {/* Navigation Cards */}
+        <div className="grid md:grid-cols-2 gap-6 mb-12">
+          {/* Rope Editor Card */}
+          <Link
+            href="/rope"
+            className="block bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow p-6 border-2 border-transparent hover:border-primary-300"
           >
-            Cancel
-          </button>
-          <button
-            onClick={handleCreate}
-            className="rounded bg-primary-500 px-4 py-2 text-sm text-white hover:bg-primary-600"
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-16 h-16 bg-primary-100 rounded-lg flex items-center justify-center">
+                <svg className="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900">Жгут</h3>
+                <p className="text-sm text-gray-500">Вязаный жгут из бисера</p>
+              </div>
+            </div>
+            <p className="text-gray-600">
+              Создавайте схемы для вязаных жгутов с поддержкой разной ширины.
+              Просматривайте черновик, исправленную схему и симуляцию готового изделия.
+            </p>
+            <div className="mt-4 text-primary-600 font-medium flex items-center gap-2">
+              Открыть редактор
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </Link>
+
+          {/* Ball Editor Card */}
+          <Link
+            href="/ball"
+            className="block bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow p-6 border-2 border-transparent hover:border-primary-300"
           >
-            Create
-          </button>
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-16 h-16 bg-primary-100 rounded-lg flex items-center justify-center">
+                <svg className="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="10" strokeWidth={2} />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900">Шар</h3>
+                <p className="text-sm text-gray-500">Оплетённая бисером бусина</p>
+              </div>
+            </div>
+            <p className="text-gray-600">
+              Создавайте схемы для оплетённых бисером шаров.
+              Работайте с клиньями, копируйте и зеркально отражайте элементы.
+            </p>
+            <div className="mt-4 text-primary-600 font-medium flex items-center gap-2">
+              Открыть редактор
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </Link>
         </div>
-      </div>
-    </div>
-  );
-}
 
-export default function EditorPage() {
-  const { pattern, actions } = usePattern(8, 100);
-  const [selectedColor, setSelectedColor] = useState(1);
-  const [tool, setTool] = useState<DrawingTool>('pencil');
-  const [zoom, setZoom] = useState(20);
-  const [shift, setShift] = useState(0);
-  const [showNewDialog, setShowNewDialog] = useState(false);
-  const [highlightedBeads, setHighlightedBeads] = useState<HighlightedBeads | null>(null);
-  const [completedBeads, setCompletedBeads] = useState(0);
-  const [ttsNavigationMode, setTtsNavigationMode] = useState(false);
-  const [editModeEnabled, setEditModeEnabled] = useState(false);
-  const [ttsNavigateTarget, setTtsNavigateTarget] = useState<number | null>(null);
-
-  const handleCreatePattern = useCallback(
-    (width: number, height: number) => {
-      actions.reset(width, height);
-    },
-    [actions]
-  );
-
-  const handleBeadClick = useCallback(
-    (x: number, y: number) => {
-      // Handle TTS navigation mode (takes priority)
-      if (ttsNavigationMode) {
-        const position = coordinatesToPosition(pattern, x, y);
-        if (position !== null) {
-          setTtsNavigateTarget(position);
-        }
-        return;
-      }
-
-      // Handle edit mode or normal editing
-      if (editModeEnabled || !highlightedBeads) {
-        if (tool === 'pencil') {
-          actions.setBead(x, y, selectedColor);
-        } else if (tool === 'fill') {
-          actions.floodFill(x, y, selectedColor);
-        } else if (tool === 'pipette') {
-          const colorIndex = pattern.field[y * pattern.width + x];
-          setSelectedColor(colorIndex);
-          setTool('pencil');
-        }
-      }
-    },
-    [tool, selectedColor, actions, pattern, ttsNavigationMode, editModeEnabled, highlightedBeads]
-  );
-
-  const handleBeadDrag = useCallback(
-    (x: number, y: number) => {
-      if (tool === 'pencil') {
-        actions.setBead(x, y, selectedColor);
-      }
-    },
-    [tool, selectedColor, actions]
-  );
-
-  const handleTTSStateChange = useCallback(
-    (position: number, groupCount: number, isActive: boolean) => {
-      if (isActive && position > 0 && groupCount > 0) {
-        const highlighted = getHighlightedBeads(pattern, position, groupCount);
-        setHighlightedBeads(highlighted);
-      } else {
-        setHighlightedBeads(null);
-      }
-    },
-    [pattern]
-  );
-
-  return (
-    <div className="flex min-h-screen flex-col">
-      <Header patternName={pattern.name} />
-
-      <Toolbar
-        tool={tool}
-        onToolChange={setTool}
-        zoom={zoom}
-        onZoomChange={setZoom}
-        onClear={() => actions.clear()}
-        onMirrorH={() => actions.mirrorHorizontal()}
-        onMirrorV={() => actions.mirrorVertical()}
-        onSave={() => actions.save()}
-        onLoad={actions.load}
-        onNew={() => setShowNewDialog(true)}
-        onShowStats={() => {
-          const stats = actions.getStats();
-          alert(
-            `Width: ${stats.width}\nHeight: ${stats.usedHeight}/${stats.height}\nRepeat: ${stats.repeat}\nTotal beads: ${stats.totalBeads}`
-          );
-        }}
-        onSaveJBB={() => actions.saveJBB()}
-        onLoadJBB={actions.loadJBB}
-      />
-
-      <div className="flex flex-1">
-        {/* Sidebar */}
-        <aside className="w-52 border-r bg-white p-4">
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-            Colors
+        {/* Features Section */}
+        <div className="bg-white rounded-xl shadow-lg p-8">
+          <h3 className="text-2xl font-semibold text-gray-900 mb-6 text-center">
+            Возможности
           </h3>
-          <ColorPalette
-            colors={DEFAULT_COLORS}
-            selectedColor={selectedColor}
-            onColorSelect={setSelectedColor}
-          />
-
-          {/* Sample Patterns */}
-          <div className="mt-6 border-t pt-4">
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-              Sample Patterns
-            </h3>
-            <div className="space-y-1">
-              {SAMPLE_PATTERNS.map((sample) => (
-                <button
-                  key={sample.id}
-                  onClick={() => actions.loadSample(sample.id)}
-                  className="w-full text-left px-2 py-1 text-xs rounded hover:bg-gray-100 transition-colors"
-                  title={sample.description}
-                >
-                  {sample.name}
-                </button>
-              ))}
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="text-center">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                </svg>
+              </div>
+              <h4 className="font-medium text-gray-900 mb-2">Озвучка (TTS)</h4>
+              <p className="text-sm text-gray-600">
+                Озвучивание цветов для удобного плетения без постоянного взгляда на схему
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+              </div>
+              <h4 className="font-medium text-gray-900 mb-2">Импорт/Экспорт</h4>
+              <p className="text-sm text-gray-600">
+                Поддержка формата JBB для обмена схемами с другими программами
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <h4 className="font-medium text-gray-900 mb-2">Сохранение прогресса</h4>
+              <p className="text-sm text-gray-600">
+                Автоматическое сохранение позиции озвучки для продолжения работы
+              </p>
             </div>
           </div>
+        </div>
+      </main>
 
-          <div className="mt-6 border-t pt-4">
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-              Info
-            </h3>
-            <p className="text-xs text-gray-600">
-              Size: {pattern.width} × {pattern.height}
-            </p>
-            <p className="text-xs text-gray-600">Tool: {tool}</p>
-            <p className="text-xs text-gray-600">
-              Color: {DEFAULT_COLORS[selectedColor]?.name || `#${selectedColor}`}
-            </p>
-          </div>
-        </aside>
-
-        {/* Canvas Area */}
-        <main className="flex flex-1 gap-4 overflow-auto bg-gray-200 p-4">
-          <CanvasPanel
-            title="Draft View (Edit)"
-            pattern={pattern}
-            zoom={zoom}
-            viewType="draft"
-            onBeadClick={handleBeadClick}
-            onBeadDrag={handleBeadDrag}
-            highlightedBeads={highlightedBeads}
-            completedBeads={completedBeads}
-          />
-
-          <CanvasPanel
-            title="Corrected View"
-            pattern={pattern}
-            zoom={zoom}
-            viewType="corrected"
-          />
-
-          <CanvasPanel
-            title="Simulation"
-            pattern={pattern}
-            zoom={zoom}
-            viewType="simulation"
-            shift={shift}
-            onShiftChange={setShift}
-          />
-        </main>
-
-        {/* TTS Panel */}
-        <aside className="w-80 border-l bg-white">
-          <TTSPanel
-            pattern={pattern}
-            onTTSStateChange={handleTTSStateChange}
-            onCompletedBeadsChange={setCompletedBeads}
-            onNavigationModeChange={setTtsNavigationMode}
-            onEditModeChange={setEditModeEnabled}
-            navigateToPosition={ttsNavigateTarget}
-            onNavigateComplete={() => setTtsNavigateTarget(null)}
-          />
-        </aside>
-      </div>
-
-      {/* New Pattern Dialog */}
-      <NewPatternDialog
-        isOpen={showNewDialog}
-        onClose={() => setShowNewDialog(false)}
-        onCreate={handleCreatePattern}
-      />
+      {/* Footer */}
+      <footer className="bg-white border-t mt-12">
+        <div className="max-w-4xl mx-auto px-4 py-6 text-center text-gray-500 text-sm">
+          BeadForge — редактор схем для бисероплетения
+        </div>
+      </footer>
     </div>
   );
 }

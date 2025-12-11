@@ -552,3 +552,81 @@ export function loadJBBBall(content: string, filename?: string): BallPattern {
   const name = filename?.replace(/\.jbb$/i, '') || undefined;
   return jbbToBallPattern(jbb, name);
 }
+
+/**
+ * Convert BallPattern to JBB format string
+ */
+export function ballPatternToJBB(pattern: BallPattern): string {
+  const lines: string[] = [];
+
+  lines.push('(jbb');
+  lines.push('    (version 1)');
+  lines.push(`    (author "${escapeString(pattern.author || '')}")`);
+  lines.push('    (organization "")');
+  lines.push(`    (notes "${escapeString(pattern.notes || '')}")`);
+
+  // Colors
+  lines.push('    (colors');
+  for (const color of pattern.colors) {
+    lines.push(`        (rgb ${color.r} ${color.g} ${color.b})`);
+  }
+  lines.push('    )');
+
+  // View settings (default values)
+  lines.push('    (view');
+  lines.push('        (draft-visible true)');
+  lines.push('        (corrected-visible true)');
+  lines.push('        (simulation-visible true)');
+  lines.push('        (report-visible true)');
+  lines.push('        (selected-tool "pencil")');
+  lines.push('        (selected-color 1)');
+  lines.push('        (zoom 2)');
+  lines.push('        (scroll 0)');
+  lines.push('        (shift 0)');
+  lines.push('        (draw-colors true)');
+  lines.push('        (draw-symbols false)');
+  lines.push(
+    '        (symbols "·abcdefghijklmnopqrstuvwxyz+-/\\\\*"))'
+  );
+
+  // Model (pattern data)
+  lines.push('    (model');
+
+  // Convert field to rows (reversed order, 0-based to 1-based)
+  for (let y = pattern.height - 1; y >= 0; y--) {
+    const rowValues: number[] = [];
+    for (let x = 0; x < pattern.width; x++) {
+      // Convert 0-based to 1-based index
+      const colorIndex = pattern.field[y * pattern.width + x];
+      rowValues.push(colorIndex + 1);
+    }
+    lines.push(`        (row ${rowValues.join(' ')})`);
+  }
+
+  lines.push('    ))');
+
+  return lines.join('\n');
+}
+
+/**
+ * Save BallPattern to .jbb format string
+ */
+export function saveJBBBall(pattern: BallPattern): string {
+  return ballPatternToJBB(pattern);
+}
+
+/**
+ * Download ball pattern as .jbb file
+ */
+export function downloadJBBBall(pattern: BallPattern, filename?: string): void {
+  const content = saveJBBBall(pattern);
+  const blob = new Blob([content], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename || `${pattern.name || 'ball_pattern'}.jbb`;
+  a.click();
+
+  URL.revokeObjectURL(url);
+}

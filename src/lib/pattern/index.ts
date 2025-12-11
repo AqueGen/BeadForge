@@ -85,6 +85,9 @@ export {
   // Ball pattern JBB support
   isJBBBallPattern,
   jbbToBallPattern,
+  ballPatternToJBB,
   loadJBBBall,
+  saveJBBBall,
+  downloadJBBBall,
   type JBBData,
 } from './jbbFormat';
