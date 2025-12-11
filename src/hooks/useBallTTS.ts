@@ -141,7 +141,8 @@ export function useBallTTS(initialSettings?: Partial<TTSSettings>): UseBallTTSRe
 
   const initializeWithPattern = useCallback((pattern: BallPattern) => {
     if (!controllerRef.current) {
-      controllerRef.current = new TTSController(settings);
+      // Use DEFAULT_TTS_SETTINGS for initial creation; settings will be updated via separate effect
+      controllerRef.current = new TTSController(DEFAULT_TTS_SETTINGS);
     }
 
     // Use ball pattern initialization
@@ -153,7 +154,7 @@ export function useBallTTS(initialSettings?: Partial<TTSSettings>): UseBallTTSRe
       currentGroupCount: 0,
       currentColorName: '',
     }));
-  }, [settings]);
+  }, []); // No dependencies - settings are updated via separate effect
 
   const play = useCallback(() => {
     controllerRef.current?.play();

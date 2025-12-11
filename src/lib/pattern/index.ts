@@ -59,6 +59,7 @@ export {
   countBallPatternBeads,
   countBallBeadsByColor,
   generateBallBeadListForTTS,
+  getHighlightedBeadsForBall,
   ballPatternToDto,
   dtoToBallPattern,
   copyWedge,

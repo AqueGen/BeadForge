@@ -308,6 +308,48 @@ export function generateBallBeadListForTTS(pattern: BallPattern): { colorIndex: 
 }
 
 /**
+ * Get highlighted beads for TTS visualization on ball pattern
+ * Returns array of coordinates for the beads in the current group
+ * More efficient than inline calculation - uses early exit
+ */
+export function getHighlightedBeadsForBall(
+  pattern: BallPattern,
+  startPosition: number,
+  count: number
+): { positions: { x: number; y: number }[]; colorIndex: number } | null {
+  if (startPosition < 1 || count < 1) {
+    return null;
+  }
+
+  const positions: { x: number; y: number }[] = [];
+  let colorIndex = 0;
+  let beadCount = 0;
+  const endPosition = startPosition + count;
+
+  // Same reading order as TTS: bottom to top, left to right
+  for (let y = 0; y < pattern.height; y++) {
+    for (let x = 0; x < pattern.width; x++) {
+      if (isPositionInWedge(pattern, x, y)) {
+        beadCount++;
+        if (beadCount >= startPosition && beadCount < endPosition) {
+          positions.push({ x, y });
+          // Get color index from first valid position
+          if (positions.length === 1) {
+            colorIndex = pattern.field[y * pattern.width + x];
+          }
+        }
+        // Early exit when we've found all needed positions
+        if (beadCount >= endPosition - 1) {
+          return positions.length > 0 ? { positions, colorIndex } : null;
+        }
+      }
+    }
+  }
+
+  return positions.length > 0 ? { positions, colorIndex } : null;
+}
+
+/**
  * Convert ball pattern to DTO for serialization
  */
 export function ballPatternToDto(pattern: BallPattern): BallPatternDto {

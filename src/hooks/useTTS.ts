@@ -141,7 +141,8 @@ export function useTTS(initialSettings?: Partial<TTSSettings>): UseTTSReturn {
 
   const initializeWithPattern = useCallback((pattern: BeadPattern) => {
     if (!controllerRef.current) {
-      controllerRef.current = new TTSController(settings);
+      // Use DEFAULT_TTS_SETTINGS for initial creation; settings will be updated via separate effect
+      controllerRef.current = new TTSController(DEFAULT_TTS_SETTINGS);
     }
 
     controllerRef.current.initialize(pattern);
@@ -152,7 +153,7 @@ export function useTTS(initialSettings?: Partial<TTSSettings>): UseTTSReturn {
       currentGroupCount: 0,
       currentColorName: '',
     }));
-  }, [settings]);
+  }, []); // No dependencies - settings are updated via separate effect
 
   const play = useCallback(() => {
     controllerRef.current?.play();

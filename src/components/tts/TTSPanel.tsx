@@ -23,6 +23,7 @@ interface TTSPanelProps {
   onTTSStateChange?: (position: number, groupCount: number, isPlaying: boolean) => void;
   onCompletedBeadsChange?: (completedBeads: number) => void;
   onNavigationModeChange?: (enabled: boolean) => void;
+  onEditModeChange?: (enabled: boolean) => void;
   navigateToPosition?: number | null;
   onNavigateComplete?: () => void;
 }
@@ -33,6 +34,7 @@ export function TTSPanel({
   onTTSStateChange,
   onCompletedBeadsChange,
   onNavigationModeChange,
+  onEditModeChange,
   navigateToPosition,
   onNavigateComplete,
 }: TTSPanelProps) {
@@ -62,6 +64,7 @@ export function TTSPanel({
   // Progress tracking
   const [completedBeads, setCompletedBeads] = useState(0);
   const [navigationMode, setNavigationMode] = useState(false);
+  const [editMode, setEditMode] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [savedProgressToRestore, setSavedProgressToRestore] = useState<TTSProgress | null>(null);
   const patternIdRef = useRef<string>('');
@@ -167,6 +170,11 @@ export function TTSPanel({
     onNavigationModeChange?.(navigationMode);
   }, [navigationMode, onNavigationModeChange]);
 
+  // Notify parent about edit mode changes
+  useEffect(() => {
+    onEditModeChange?.(editMode);
+  }, [editMode, onEditModeChange]);
+
   // Handle navigation from bead click
   useEffect(() => {
     if (navigateToPosition !== null && navigateToPosition !== undefined && navigateToPosition > 0) {
@@ -231,9 +239,26 @@ export function TTSPanel({
     [goToPosition, onCompletedBeadsChange]
   );
 
-  // Toggle navigation mode
+  // Toggle navigation mode (mutually exclusive with edit mode)
   const handleNavigationToggle = useCallback(() => {
-    setNavigationMode((prev) => !prev);
+    setNavigationMode((prev) => {
+      const newValue = !prev;
+      if (newValue) {
+        setEditMode(false); // Turn off edit mode when enabling navigation
+      }
+      return newValue;
+    });
+  }, []);
+
+  // Toggle edit mode (mutually exclusive with navigation mode)
+  const handleEditToggle = useCallback(() => {
+    setEditMode((prev) => {
+      const newValue = !prev;
+      if (newValue) {
+        setNavigationMode(false); // Turn off navigation mode when enabling edit
+      }
+      return newValue;
+    });
   }, []);
 
   // Reset progress handlers
@@ -406,8 +431,22 @@ export function TTSPanel({
             </span>
           </div>
 
-          {/* Navigation mode toggle */}
+          {/* Edit and Navigation mode toggles */}
           <div className="flex items-center gap-2 mb-2">
+            <button
+              onClick={handleEditToggle}
+              className={`flex-1 px-3 py-2 text-sm rounded border transition-colors ${
+                editMode
+                  ? 'bg-green-500 text-white border-green-500'
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              {settings.language === 'uk'
+                ? (editMode ? '✏️ Редагування ВКЛ' : '✏️ Редагування')
+                : settings.language === 'ru'
+                  ? (editMode ? '✏️ Редактирование ВКЛ' : '✏️ Редактирование')
+                  : (editMode ? '✏️ Edit ON' : '✏️ Edit Mode')}
+            </button>
             <button
               onClick={handleNavigationToggle}
               className={`flex-1 px-3 py-2 text-sm rounded border transition-colors ${
@@ -417,12 +456,23 @@ export function TTSPanel({
               }`}
             >
               {settings.language === 'uk'
-                ? (navigationMode ? '🎯 Режим навігації ВКЛ' : '🎯 Режим навігації')
+                ? (navigationMode ? '🎯 Навігація ВКЛ' : '🎯 Навігація')
                 : settings.language === 'ru'
-                  ? (navigationMode ? '🎯 Режим навигации ВКЛ' : '🎯 Режим навигации')
-                  : (navigationMode ? '🎯 Navigation ON' : '🎯 Navigation Mode')}
+                  ? (navigationMode ? '🎯 Навигация ВКЛ' : '🎯 Навигация')
+                  : (navigationMode ? '🎯 Navigation ON' : '🎯 Navigation')}
             </button>
           </div>
+
+          {/* Edit mode hint */}
+          {editMode && (
+            <p className="text-xs text-green-600 mb-2">
+              {settings.language === 'uk'
+                ? 'Натисніть на бусину, щоб змінити її колір'
+                : settings.language === 'ru'
+                  ? 'Нажмите на бусину, чтобы изменить её цвет'
+                  : 'Click on a bead to change its color'}
+            </p>
+          )}
 
           {/* Navigation mode hint */}
           {navigationMode && (

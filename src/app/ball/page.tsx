@@ -8,7 +8,7 @@ import { BallPatternCanvas } from '@/components/editor/BallPatternCanvas';
 import { BallTTSPanel } from '@/components/tts/BallTTSPanel';
 import { useBallPattern } from '@/hooks/useBallPattern';
 import { DEFAULT_COLORS, BALL_SIZE_CONFIGS, type DrawingTool, type HighlightedBeads } from '@/types';
-import { isPositionInWedge } from '@/lib/pattern/ballPattern';
+import { isPositionInWedge, getHighlightedBeadsForBall } from '@/lib/pattern/ballPattern';
 
 // Ball Pattern Creation Dialog
 function NewBallPatternDialog({
@@ -186,6 +186,18 @@ export default function BallEditorPage() {
     }
   }, [actions]);
 
+  const handleTTSStateChange = useCallback(
+    (position: number, groupCount: number, isActive: boolean) => {
+      if (isActive && position > 0 && groupCount > 0 && pattern) {
+        const highlighted = getHighlightedBeadsForBall(pattern, position, groupCount);
+        setHighlightedBeads(highlighted);
+      } else {
+        setHighlightedBeads(null);
+      }
+    },
+    [pattern]
+  );
+
   return (
     <div className="flex min-h-screen flex-col">
       <Header patternName={pattern?.name || 'Ball Pattern'} />
@@ -326,38 +338,7 @@ export default function BallEditorPage() {
           {pattern ? (
             <BallTTSPanel
               pattern={pattern}
-              onTTSStateChange={(position, groupCount, isActive) => {
-                if (isActive && position > 0) {
-                  // Calculate positions for highlighted beads
-                  const positions: { x: number; y: number }[] = [];
-                  let beadCount = 0;
-
-                  // Same reading order as TTS: bottom to top, left to right
-                  outer: for (let y = 0; y < pattern.height; y++) {
-                    for (let x = 0; x < pattern.width; x++) {
-                      // Use the same isPositionInWedge function used everywhere else
-                      if (isPositionInWedge(pattern, x, y)) {
-                        beadCount++;
-                        if (beadCount >= position && beadCount < position + groupCount) {
-                          positions.push({ x, y });
-                        }
-                        if (beadCount >= position + groupCount - 1) {
-                          break outer;
-                        }
-                      }
-                    }
-                  }
-
-                  if (positions.length > 0) {
-                    setHighlightedBeads({
-                      positions,
-                      colorIndex: pattern.field[positions[0].y * pattern.width + positions[0].x],
-                    });
-                  }
-                } else {
-                  setHighlightedBeads(null);
-                }
-              }}
+              onTTSStateChange={handleTTSStateChange}
               onCompletedBeadsChange={setCompletedBeads}
               onNavigationModeChange={setTtsNavigationMode}
               onEditModeChange={setEditModeEnabled}

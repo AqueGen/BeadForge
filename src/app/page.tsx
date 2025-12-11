@@ -95,6 +95,7 @@ export default function EditorPage() {
   const [highlightedBeads, setHighlightedBeads] = useState<HighlightedBeads | null>(null);
   const [completedBeads, setCompletedBeads] = useState(0);
   const [ttsNavigationMode, setTtsNavigationMode] = useState(false);
+  const [editModeEnabled, setEditModeEnabled] = useState(false);
   const [ttsNavigateTarget, setTtsNavigateTarget] = useState<number | null>(null);
 
   const handleCreatePattern = useCallback(
@@ -106,7 +107,7 @@ export default function EditorPage() {
 
   const handleBeadClick = useCallback(
     (x: number, y: number) => {
-      // Handle TTS navigation mode
+      // Handle TTS navigation mode (takes priority)
       if (ttsNavigationMode) {
         const position = coordinatesToPosition(pattern, x, y);
         if (position !== null) {
@@ -115,17 +116,20 @@ export default function EditorPage() {
         return;
       }
 
-      if (tool === 'pencil') {
-        actions.setBead(x, y, selectedColor);
-      } else if (tool === 'fill') {
-        actions.floodFill(x, y, selectedColor);
-      } else if (tool === 'pipette') {
-        const colorIndex = pattern.field[y * pattern.width + x];
-        setSelectedColor(colorIndex);
-        setTool('pencil');
+      // Handle edit mode or normal editing
+      if (editModeEnabled || !highlightedBeads) {
+        if (tool === 'pencil') {
+          actions.setBead(x, y, selectedColor);
+        } else if (tool === 'fill') {
+          actions.floodFill(x, y, selectedColor);
+        } else if (tool === 'pipette') {
+          const colorIndex = pattern.field[y * pattern.width + x];
+          setSelectedColor(colorIndex);
+          setTool('pencil');
+        }
       }
     },
-    [tool, selectedColor, actions, pattern, ttsNavigationMode]
+    [tool, selectedColor, actions, pattern, ttsNavigationMode, editModeEnabled, highlightedBeads]
   );
 
   const handleBeadDrag = useCallback(
@@ -256,6 +260,7 @@ export default function EditorPage() {
             onTTSStateChange={handleTTSStateChange}
             onCompletedBeadsChange={setCompletedBeads}
             onNavigationModeChange={setTtsNavigationMode}
+            onEditModeChange={setEditModeEnabled}
             navigateToPosition={ttsNavigateTarget}
             onNavigateComplete={() => setTtsNavigateTarget(null)}
           />
