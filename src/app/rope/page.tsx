@@ -117,8 +117,8 @@ export default function RopeEditorPage() {
         return;
       }
 
-      // Handle edit mode or normal editing
-      if (editModeEnabled || !highlightedBeads) {
+      // Handle edit mode - only allow editing when explicitly enabled
+      if (editModeEnabled) {
         if (tool === 'pencil') {
           actions.setBead(x, y, selectedColor);
         } else if (tool === 'fill') {
@@ -130,16 +130,17 @@ export default function RopeEditorPage() {
         }
       }
     },
-    [tool, selectedColor, actions, pattern, ttsNavigationMode, editModeEnabled, highlightedBeads]
+    [tool, selectedColor, actions, pattern, ttsNavigationMode, editModeEnabled]
   );
 
   const handleBeadDrag = useCallback(
     (x: number, y: number) => {
-      if (tool === 'pencil') {
+      // Only allow dragging when edit mode is enabled
+      if (editModeEnabled && tool === 'pencil') {
         actions.setBead(x, y, selectedColor);
       }
     },
-    [tool, selectedColor, actions]
+    [tool, selectedColor, actions, editModeEnabled]
   );
 
   const handleTTSStateChange = useCallback(
