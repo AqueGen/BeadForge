@@ -3,6 +3,7 @@
 import { FC, useRef, useEffect, useState, useCallback } from 'react';
 import type { BallPattern, HighlightedBeads } from '@/types';
 import { colorToRgba } from '@/lib/utils';
+import { isPositionInWedge } from '@/lib/pattern/ballPattern';
 
 interface BallPatternCanvasProps {
   pattern: BallPattern;
@@ -90,6 +91,11 @@ export const BallPatternCanvas: FC<BallPatternCanvasProps> = ({
         return null;
       }
 
+      // Reject clicks on cells outside wedge areas
+      if (!isPositionInWedge(pattern, x, y)) {
+        return null;
+      }
+
       return { x, y };
     },
     [zoom, pattern]
@@ -145,8 +151,8 @@ export const BallPatternCanvas: FC<BallPatternCanvasProps> = ({
 };
 
 /**
- * Render the ball pattern as a full rectangular grid
- * All cells are rendered - background color shows "empty" areas
+ * Render the ball pattern - only cells inside wedges are rendered
+ * Cells outside wedges (empty triangular gaps) are not displayed
  */
 function renderBallPattern(
   ctx: CanvasRenderingContext2D,
@@ -155,12 +161,13 @@ function renderBallPattern(
 ) {
   const { width, height, field, colors } = pattern;
 
-  // Get background color (usually index 0 or 1)
-  const bgColor = colors[0] || { r: 255, g: 255, b: 255 };
-  const bgRgba = colorToRgba(bgColor);
-
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
+      // Skip cells outside wedge areas - don't render them at all
+      if (!isPositionInWedge(pattern, x, y)) {
+        continue;
+      }
+
       const colorIndex = field[y * width + x];
       const color = colors[colorIndex] || colors[0];
       const rgba = colorToRgba(color);
@@ -169,47 +176,38 @@ function renderBallPattern(
       const canvasX = x * zoom;
       const canvasY = (height - 1 - y) * zoom;
 
-      // Check if this is background color - render with slight transparency
-      const isBackground = colorIndex === 0 ||
-        (color.r === bgColor.r && color.g === bgColor.g && color.b === bgColor.b);
-
-      if (isBackground) {
-        // Render background cells with pattern to show grid structure
-        ctx.fillStyle = '#e8e8e8';
-        ctx.fillRect(canvasX, canvasY, zoom - 1, zoom - 1);
-      } else {
-        ctx.fillStyle = rgba;
-        ctx.fillRect(canvasX, canvasY, zoom - 1, zoom - 1);
-      }
+      ctx.fillStyle = rgba;
+      ctx.fillRect(canvasX, canvasY, zoom - 1, zoom - 1);
     }
   }
 }
 
 /**
- * Render grid lines for all cells
+ * Render grid lines only for cells inside wedges
  */
 function renderGrid(
   ctx: CanvasRenderingContext2D,
   pattern: BallPattern,
   zoom: number
 ) {
-  ctx.strokeStyle = '#ddd';
+  ctx.strokeStyle = '#ccc';
   ctx.lineWidth = 0.5;
 
-  // Vertical lines
-  for (let x = 0; x <= pattern.width; x++) {
-    ctx.beginPath();
-    ctx.moveTo(x * zoom, 0);
-    ctx.lineTo(x * zoom, pattern.height * zoom);
-    ctx.stroke();
-  }
+  const { width, height } = pattern;
 
-  // Horizontal lines
-  for (let y = 0; y <= pattern.height; y++) {
-    ctx.beginPath();
-    ctx.moveTo(0, y * zoom);
-    ctx.lineTo(pattern.width * zoom, y * zoom);
-    ctx.stroke();
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      // Only draw grid for cells inside wedges
+      if (!isPositionInWedge(pattern, x, y)) {
+        continue;
+      }
+
+      const canvasX = x * zoom;
+      const canvasY = (height - 1 - y) * zoom;
+
+      // Draw cell border
+      ctx.strokeRect(canvasX, canvasY, zoom - 1, zoom - 1);
+    }
   }
 }
 
@@ -248,7 +246,7 @@ function renderWedgeBoundaries(
 
 /**
  * Render dimming overlay for completed beads in TTS mode
- * Reads all non-background cells from bottom to top, left to right
+ * Reads all wedge cells from bottom to top, left to right
  */
 function renderCompletedOverlay(
   ctx: CanvasRenderingContext2D,
@@ -258,26 +256,21 @@ function renderCompletedOverlay(
 ) {
   ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
 
-  const bgColor = pattern.colors[0] || { r: 255, g: 255, b: 255 };
   let beadCount = 0;
 
   // Same reading order as TTS: bottom to top, left to right
   for (let y = 0; y < pattern.height && beadCount < completedBeads; y++) {
     for (let x = 0; x < pattern.width && beadCount < completedBeads; x++) {
-      const colorIndex = pattern.field[y * pattern.width + x];
-      const color = pattern.colors[colorIndex];
+      // Only count cells inside wedges
+      if (!isPositionInWedge(pattern, x, y)) {
+        continue;
+      }
 
-      // Skip background cells
-      const isBackground = colorIndex === 0 ||
-        (color && color.r === bgColor.r && color.g === bgColor.g && color.b === bgColor.b);
-
-      if (!isBackground) {
-        beadCount++;
-        if (beadCount <= completedBeads) {
-          const canvasX = x * zoom;
-          const canvasY = (pattern.height - 1 - y) * zoom;
-          ctx.fillRect(canvasX, canvasY, zoom - 1, zoom - 1);
-        }
+      beadCount++;
+      if (beadCount <= completedBeads) {
+        const canvasX = x * zoom;
+        const canvasY = (pattern.height - 1 - y) * zoom;
+        ctx.fillRect(canvasX, canvasY, zoom - 1, zoom - 1);
       }
     }
   }
