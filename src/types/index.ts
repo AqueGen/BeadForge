@@ -369,12 +369,23 @@ export interface BallSizeConfig {
 
 /**
  * Predefined ball size configurations
+ * Values based on JBead JBB file analysis for accurate sphere geometry
+ *
+ * JBB spheres use a rectangular grid where:
+ * - circumference = total beads around equator (grid width)
+ * - wedgeBase = circumference / 6 (beads per wedge at equator)
+ * - wedgeHeight = height / 2 (rows from equator to pole)
+ * - total grid height = 2 * wedgeHeight (pole to pole)
  */
 export const BALL_SIZE_CONFIGS: BallSizeConfig[] = [
-  { diameter: 3, circumference: 54, wedgeBase: 9, wedgeHeight: 6 },
-  { diameter: 4, circumference: 66, wedgeBase: 11, wedgeHeight: 10 },
-  { diameter: 5, circumference: 78, wedgeBase: 13, wedgeHeight: 11 },
-  { diameter: 6, circumference: 90, wedgeBase: 15, wedgeHeight: 14 },
+  // Estimated based on JBB scaling patterns
+  { diameter: 3, circumference: 66, wedgeBase: 11, wedgeHeight: 20 },
+  // From JBB: Sphere_4см.jbb = 86 width × 50 height
+  { diameter: 4, circumference: 86, wedgeBase: 14, wedgeHeight: 25 },
+  // Interpolated between 4cm and 6cm
+  { diameter: 5, circumference: 96, wedgeBase: 16, wedgeHeight: 26 },
+  // From JBB: Sphere_6см.jbb = 110 width × 55 height
+  { diameter: 6, circumference: 110, wedgeBase: 18, wedgeHeight: 27 },
 ];
 
 /**

@@ -95,7 +95,7 @@ export const Toolbar: FC<ToolbarProps> = ({
         <ToolButton onClick={onNew} title="New Pattern">
           📄 New
         </ToolButton>
-        <ToolButton onClick={handleLoadClick} title="Open Pattern (.beadforge)">
+        <ToolButton onClick={handleLoadClick} title="Open Pattern (.beadforge, .jbb)">
           📂 Open
         </ToolButton>
         <ToolButton onClick={onSave} title="Save Pattern (.beadforge)">
@@ -104,7 +104,7 @@ export const Toolbar: FC<ToolbarProps> = ({
         <input
           ref={fileInputRef}
           type="file"
-          accept=".beadforge,.json"
+          accept=".beadforge,.json,.jbb"
           onChange={handleFileChange}
           className="hidden"
         />

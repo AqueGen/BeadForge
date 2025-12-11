@@ -12,6 +12,7 @@ import {
   copyWedge,
   copyWedgeToAll,
   mirrorWedgeHorizontally,
+  loadJBBBall,
 } from '@/lib/pattern';
 import { floodFillBallPattern } from '@/lib/pattern/ballDrawing';
 
@@ -121,6 +122,16 @@ export function useBallPattern(): UseBallPatternReturn {
 
   const load = useCallback(async (file: File) => {
     const text = await file.text();
+    const filename = file.name.toLowerCase();
+
+    // Handle JBB files (JBead format)
+    if (filename.endsWith('.jbb')) {
+      const loaded = loadJBBBall(text, file.name);
+      setPattern(loaded);
+      return;
+    }
+
+    // Handle BeadForge JSON format
     const dto = JSON.parse(text);
 
     if (dto.type !== 'ball') {

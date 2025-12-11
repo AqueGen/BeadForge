@@ -17,8 +17,8 @@
  * Note: Color indices in model are 1-based (0 = background/transparent)
  */
 
-import type { BeadPattern, BeadColor } from '@/types';
-import { DEFAULT_COLORS } from '@/types';
+import type { BeadPattern, BeadColor, BallPattern } from '@/types';
+import { DEFAULT_COLORS, BALL_SIZE_CONFIGS } from '@/types';
 
 /**
  * Generate a unique ID (replacement for uuid)
@@ -433,4 +433,122 @@ export function downloadJBB(pattern: BeadPattern, filename?: string): void {
   a.click();
 
   URL.revokeObjectURL(url);
+}
+
+// ============================================================
+// Ball Pattern JBB Support
+// ============================================================
+
+/**
+ * Detect if JBB data represents a ball/sphere pattern
+ * Ball patterns typically have aspect ratio close to 2:1 (width:height)
+ * and dimensions matching known ball size configs
+ */
+export function isJBBBallPattern(jbb: JBBData): boolean {
+  const height = jbb.model.length;
+  const width = height > 0 ? jbb.model[0].length : 0;
+
+  // Check if dimensions match known ball configs
+  for (const config of BALL_SIZE_CONFIGS) {
+    if (width === config.circumference && Math.abs(height - config.wedgeHeight * 2) <= 2) {
+      return true;
+    }
+  }
+
+  // Heuristic: ball patterns have width/height ratio around 1.7-2.2
+  // and width is typically > 60 beads
+  const ratio = width / height;
+  return width >= 60 && ratio >= 1.5 && ratio <= 2.5;
+}
+
+/**
+ * Find the best matching ball config for given dimensions
+ */
+function findBallConfigForDimensions(width: number, height: number): { diameter: number; circumference: number; wedgeBase: number; wedgeHeight: number } {
+  // First, try exact match
+  for (const config of BALL_SIZE_CONFIGS) {
+    if (width === config.circumference) {
+      return config;
+    }
+  }
+
+  // Find closest match by circumference
+  let bestConfig = BALL_SIZE_CONFIGS[0];
+  let minDiff = Math.abs(width - bestConfig.circumference);
+
+  for (const config of BALL_SIZE_CONFIGS) {
+    const diff = Math.abs(width - config.circumference);
+    if (diff < minDiff) {
+      minDiff = diff;
+      bestConfig = config;
+    }
+  }
+
+  // If dimensions don't match any config, create custom config
+  if (minDiff > 10) {
+    return {
+      diameter: Math.round(width / 18), // Approximate diameter from circumference
+      circumference: width,
+      wedgeBase: Math.round(width / 6),
+      wedgeHeight: Math.round(height / 2),
+    };
+  }
+
+  return bestConfig;
+}
+
+/**
+ * Convert JBBData to BallPattern
+ * Ball patterns use full rectangular grid from JBB
+ */
+export function jbbToBallPattern(jbb: JBBData, name?: string): BallPattern {
+  const height = jbb.model.length;
+  const width = height > 0 ? jbb.model[0].length : 0;
+
+  // Find matching ball config
+  const config = findBallConfigForDimensions(width, height);
+
+  // Create field from model data
+  // JBB rows are stored top-to-bottom, we store bottom-to-top
+  const field = new Uint8Array(width * height);
+
+  for (let y = 0; y < height; y++) {
+    const row = jbb.model[height - 1 - y]; // Reverse row order
+    for (let x = 0; x < width; x++) {
+      // JBB index directly maps to colors array index
+      field[y * width + x] = row[x] || 0;
+    }
+  }
+
+  // Use JBB colors or default colors
+  const colors: BeadColor[] =
+    jbb.colors.length > 0 ? jbb.colors : [...DEFAULT_COLORS];
+
+  return {
+    id: generateId(),
+    name: name || jbb.author || 'Imported Ball Pattern',
+    author: jbb.author || undefined,
+    notes: jbb.notes || undefined,
+    type: 'ball',
+    diameter: config.diameter,
+    circumference: config.circumference,
+    wedgeBase: config.wedgeBase,
+    wedgeHeight: Math.round(height / 2),
+    width,
+    height,
+    field,
+    colors,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    isPublic: false,
+  };
+}
+
+/**
+ * Load .jbb file content and convert to BallPattern
+ */
+export function loadJBBBall(content: string, filename?: string): BallPattern {
+  const jbb = parseJBB(content);
+  const name = filename?.replace(/\.jbb$/i, '') || undefined;
+  return jbbToBallPattern(jbb, name);
 }
