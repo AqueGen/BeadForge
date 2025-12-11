@@ -6,10 +6,18 @@ import { Navigation } from '@/components/layout/Navigation';
 import { Toolbar } from '@/components/editor/Toolbar';
 import { ColorPalette } from '@/components/editor/ColorPalette';
 import { BallPatternCanvas } from '@/components/editor/BallPatternCanvas';
+import { BallWrappedView } from '@/components/editor/BallWrappedView';
 import { BallTTSPanel } from '@/components/tts/BallTTSPanel';
 import { useBallPattern } from '@/hooks/useBallPattern';
 import { DEFAULT_COLORS, BALL_SIZE_CONFIGS, type DrawingTool, type HighlightedBeads } from '@/types';
 import { isPositionInWedge, getHighlightedBeadsForBall } from '@/lib/pattern/ballPattern';
+
+// Offset values for bead crochet row stagger (like CrochetBeadPaint)
+const OFFSET_VALUES = [
+  -0.5, -0.1, 0.1, 0.12, 0.15, 0.17, 0.2, 0.22, 0.25, 0.27,
+  0.3, 0.32, 0.35, 0.37, 0.4, 0.42, 0.45, 0.47, 0.5, 0.52,
+  0.55, 0.57, 0.6, 0.62, 0.65, 0.67, 0.7, 0.72, 0.75, 0.77, 0.8
+];
 
 // Ball Pattern Creation Dialog
 function NewBallPatternDialog({
@@ -124,6 +132,7 @@ export default function BallEditorPage() {
   const [ttsNavigationMode, setTtsNavigationMode] = useState(false);
   const [editModeEnabled, setEditModeEnabled] = useState(false);
   const [ttsNavigateTarget, setTtsNavigateTarget] = useState<number | null>(null);
+  const [offset, setOffset] = useState(0.5); // Row offset for bead crochet stagger
 
   const handleCreatePattern = useCallback(
     (diameter: number) => {
@@ -329,17 +338,57 @@ export default function BallEditorPage() {
         </aside>
 
         {/* Canvas Area */}
-        <main className="flex flex-1 gap-4 overflow-auto bg-gray-200 p-4">
+        <main className="flex flex-1 flex-col gap-4 overflow-auto bg-gray-200 p-4">
+          {/* Offset Control */}
+          {pattern && (
+            <div className="flex items-center gap-3 rounded-lg bg-white px-4 py-2 shadow">
+              <label className="text-sm font-medium text-gray-700">
+                Смещение:
+              </label>
+              <select
+                value={offset}
+                onChange={(e) => setOffset(parseFloat(e.target.value))}
+                className="rounded border border-gray-300 px-3 py-1 text-sm focus:border-primary-500 focus:outline-none"
+              >
+                {OFFSET_VALUES.map((val) => (
+                  <option key={val} value={val}>
+                    {val >= 0 ? `+${val}` : val}
+                  </option>
+                ))}
+              </select>
+              <span className="text-xs text-gray-500">
+                (сдвиг рядов для бисерного вязания)
+              </span>
+            </div>
+          )}
+
+          {/* Two Views Side by Side */}
           {pattern ? (
-            <BallPatternCanvas
-              pattern={pattern}
-              zoom={zoom}
-              showGrid={true}
-              onBeadClick={handleBeadClick}
-              onBeadDrag={handleBeadDrag}
-              highlightedBeads={highlightedBeads}
-              completedBeads={completedBeads}
-            />
+            <div className="flex flex-1 gap-4">
+              {/* Flat/Draft View (editable) */}
+              <div className="flex-1">
+                <BallPatternCanvas
+                  pattern={pattern}
+                  zoom={zoom}
+                  showGrid={true}
+                  onBeadClick={handleBeadClick}
+                  onBeadDrag={handleBeadDrag}
+                  highlightedBeads={highlightedBeads}
+                  completedBeads={completedBeads}
+                />
+              </div>
+
+              {/* Wrapped/Simulation View */}
+              <div className="w-80 flex-shrink-0">
+                <BallWrappedView
+                  pattern={pattern}
+                  zoom={zoom}
+                  offset={offset}
+                  highlightedBeads={highlightedBeads}
+                  completedBeads={completedBeads}
+                />
+              </div>
+            </div>
           ) : (
             <div className="flex flex-1 items-center justify-center">
               <div className="text-center text-gray-500">
