@@ -8,6 +8,7 @@ import { BallPatternCanvas } from '@/components/editor/BallPatternCanvas';
 import { BallTTSPanel } from '@/components/tts/BallTTSPanel';
 import { useBallPattern } from '@/hooks/useBallPattern';
 import { DEFAULT_COLORS, BALL_SIZE_CONFIGS, type DrawingTool, type HighlightedBeads } from '@/types';
+import { isPositionInWedge } from '@/lib/pattern/ballPattern';
 
 // Ball Pattern Creation Dialog
 function NewBallPatternDialog({
@@ -98,15 +99,8 @@ function ballCoordinatesToPosition(pattern: ReturnType<typeof useBallPattern>['p
   // Same reading order as TTS: bottom to top, left to right
   for (let py = 0; py < pattern.height; py++) {
     for (let px = 0; px < pattern.width; px++) {
-      // Check if position is in a wedge
-      const wedgeCol = Math.floor(px / pattern.wedgeBase);
-      const localX = px % pattern.wedgeBase;
-      const isTopRow = py >= pattern.wedgeHeight;
-      const localY = isTopRow ? py - pattern.wedgeHeight : pattern.wedgeHeight - 1 - py;
-      const wedgeWidth = pattern.wedgeBase - localY;
-      const offset = Math.floor(localY / 2);
-
-      if (localX >= offset && localX < offset + wedgeWidth) {
+      // Use the same isPositionInWedge function used everywhere else
+      if (isPositionInWedge(pattern, px, py)) {
         position++;
         if (px === x && py === y) {
           return position;
@@ -341,14 +335,8 @@ export default function BallEditorPage() {
                   // Same reading order as TTS: bottom to top, left to right
                   outer: for (let y = 0; y < pattern.height; y++) {
                     for (let x = 0; x < pattern.width; x++) {
-                      // Check if position is in a wedge (simplified check)
-                      const localX = x % pattern.wedgeBase;
-                      const isTopRow = y >= pattern.wedgeHeight;
-                      const localY = isTopRow ? y - pattern.wedgeHeight : pattern.wedgeHeight - 1 - y;
-                      const wedgeWidth = pattern.wedgeBase - localY;
-                      const offset = Math.floor(localY / 2);
-
-                      if (localX >= offset && localX < offset + wedgeWidth) {
+                      // Use the same isPositionInWedge function used everywhere else
+                      if (isPositionInWedge(pattern, x, y)) {
                         beadCount++;
                         if (beadCount >= position && beadCount < position + groupCount) {
                           positions.push({ x, y });
