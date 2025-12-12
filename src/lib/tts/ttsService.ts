@@ -11,15 +11,18 @@ import type {
   TTSBeadItem,
   TTSGroupedItem,
 } from '@/types';
+import type { ColorMapping, TTSMode as ColorMappingTTSMode } from '@/types/colorMapping';
+import { getActiveModifierKeys } from '@/types/colorMapping';
 import { SKIP_COLOR_INDEX } from '@/types';
 import { getColorName, getLanguageCode, COLOR_TRANSLATIONS } from './colorNames';
+import { VOICED_COLORS, MODIFIER_VOICES } from '@/lib/pattern/colorMatching';
 import {
   playColorAudio,
+  playModifierAudio,
   playNumberAudio,
   stopAudio as stopPrerecordedAudio,
   getDefaultAudioVoice,
   isAudioTTSSupported,
-  getAudioVoicesForLanguage,
 } from './audioTTS';
 
 /**
@@ -284,10 +287,20 @@ export class TTSController {
   private onStateChange?: (isPlaying: boolean, isPaused: boolean) => void;
   private pauseTimeout?: ReturnType<typeof setTimeout>;
   private useAudioFiles = true; // Try audio files first
+  private colorMappings: ColorMapping[] = [];
+  private colorMappingTTSMode: ColorMappingTTSMode = 'colorOnly';
 
   constructor(settings: TTSSettings) {
     this.settings = settings;
     this.useAudioFiles = isAudioTTSSupported();
+  }
+
+  /**
+   * Set color mappings for TTS
+   */
+  setColorMappings(mappings: ColorMapping[], ttsMode: ColorMappingTTSMode): void {
+    this.colorMappings = mappings;
+    this.colorMappingTTSMode = ttsMode;
   }
 
   /**
@@ -423,9 +436,39 @@ export class TTSController {
   }
 
   /**
-   * Get color key for audio file lookup
+   * Get current color index from item
+   */
+  private getCurrentColorIndex(): number {
+    if (this.settings.format === 'grouped') {
+      return this.groupedItems[this.currentIndex]?.colorIndex ?? -1;
+    }
+    return this.items[this.currentIndex]?.colorIndex ?? -1;
+  }
+
+  /**
+   * Get color mapping for current color
+   */
+  private getCurrentMapping(): ColorMapping | undefined {
+    const colorIndex = this.getCurrentColorIndex();
+    if (colorIndex < 0) return undefined;
+    return this.colorMappings.find(m => m.originalIndex === colorIndex);
+  }
+
+  /**
+   * Get color key for audio file lookup - uses mappings if available
    */
   private getCurrentColorKey(): string | null {
+    // If we have mappings, use the mapped voiced color
+    const mapping = this.getCurrentMapping();
+    if (mapping) {
+      const voicedColor = VOICED_COLORS[mapping.mappedColorIndex];
+      if (voicedColor) {
+        // Capitalize first letter for audio file lookup
+        return voicedColor.key.charAt(0).toUpperCase() + voicedColor.key.slice(1);
+      }
+    }
+
+    // Fallback to original behavior
     const colorName = this.getCurrentColorName();
     if (!colorName) return null;
 
@@ -439,6 +482,16 @@ export class TTSController {
     }
 
     return null;
+  }
+
+  /**
+   * Get active modifiers for current color
+   */
+  private getCurrentModifierKeys(): string[] {
+    if (this.colorMappingTTSMode !== 'full') return [];
+    const mapping = this.getCurrentMapping();
+    if (!mapping) return [];
+    return getActiveModifierKeys(mapping.modifiers);
   }
 
   /**
@@ -484,6 +537,7 @@ export class TTSController {
   /**
    * Try to play audio file, returns true if successful
    * For grouped mode with count > 1, plays color audio then number audio
+   * When colorMappingTTSMode is 'full', plays modifiers after color
    */
   private async tryPlayAudio(): Promise<boolean> {
     if (!this.shouldUseAudioFiles()) return false;
@@ -505,11 +559,45 @@ export class TTSController {
 
       if (!colorPlayed) return false;
 
+      // Play modifiers if TTS mode is 'full'
+      const modifierKeys = this.getCurrentModifierKeys();
+      if (modifierKeys.length > 0) {
+        for (const modKey of modifierKeys) {
+          // Small pause between audio clips
+          await new Promise(resolve => setTimeout(resolve, 80));
+
+          // Try to play modifier audio
+          const modPlayed = await playModifierAudio(
+            voiceId,
+            modKey,
+            this.settings.speed,
+            this.settings.volume
+          );
+
+          // Fallback to system TTS for modifier if audio not available
+          if (!modPlayed && this.shouldUseSystemTTS()) {
+            const modVoice = MODIFIER_VOICES.find(m => m.key === modKey);
+            if (modVoice) {
+              const modText = this.settings.language === 'uk' ? modVoice.nameUk :
+                              this.settings.language === 'ru' ? modVoice.nameRu : modVoice.nameEn;
+              const utterance = createUtterance(modText, this.settings);
+              if (utterance) {
+                await new Promise<void>((resolve) => {
+                  utterance.onend = () => resolve();
+                  utterance.onerror = () => resolve();
+                  window.speechSynthesis.speak(utterance);
+                });
+              }
+            }
+          }
+        }
+      }
+
       // For grouped mode with count > 1, also play the number
       if (this.settings.format === 'grouped') {
         const groupCount = this.getCurrentGroupCount();
         if (groupCount > 1) {
-          // Small pause between color and number
+          // Small pause between color/modifiers and number
           await new Promise(resolve => setTimeout(resolve, 100));
 
           // Try to play number audio, fallback to system TTS if not available

@@ -7,8 +7,10 @@ import { coordinatesToPosition } from '@/lib/pattern';
 import { Toolbar } from '@/components/editor/Toolbar';
 import { ColorPalette } from '@/components/editor/ColorPalette';
 import { CanvasPanel } from '@/components/editor/CanvasPanel';
+import { ColorMappingPanel } from '@/components/editor/ColorMappingPanel';
 import { TTSPanel } from '@/components/tts';
 import { usePattern } from '@/hooks/usePattern';
+import { useColorMapping } from '@/hooks/useColorMapping';
 import { getSamplePatternList, getHighlightedBeads } from '@/lib/pattern';
 import { DEFAULT_COLORS, SKIP_COLOR_INDEX, type DrawingTool, type HighlightedBeads } from '@/types';
 
@@ -99,6 +101,10 @@ export default function RopeEditorPage() {
   const [editModeEnabled, setEditModeEnabled] = useState(false);
   const [ttsNavigateTarget, setTtsNavigateTarget] = useState<number | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true); // Default: collapsed
+  const [showColorMappingPanel, setShowColorMappingPanel] = useState(false);
+
+  // Color mapping hook
+  const colorMapping = useColorMapping(pattern);
 
   // Toggle sidebar - expanding enables edit mode, collapsing disables it
   const handleSidebarToggle = useCallback(() => {
@@ -229,6 +235,10 @@ export default function RopeEditorPage() {
         }}
         onSaveJBB={() => actions.saveJBB()}
         onLoadJBB={actions.loadJBB}
+        showColorMapping={true}
+        colorMappingHasWarning={colorMapping.mappings.some(m => !m.isAutoMapped) || colorMapping.mappings.length === 0}
+        colorMappingWarningCount={colorMapping.mappings.filter(m => !m.isAutoMapped).length}
+        onColorMappingClick={() => setShowColorMappingPanel(true)}
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -419,6 +429,9 @@ export default function RopeEditorPage() {
             onNavigationModeChange={setTtsNavigationMode}
             navigateToPosition={ttsNavigateTarget}
             onNavigateComplete={() => setTtsNavigateTarget(null)}
+            colorMappings={colorMapping.mappings}
+            colorMappingTTSMode={colorMapping.ttsMode}
+            onColorMappingTTSModeChange={colorMapping.setTTSMode}
           />
         </aside>
       </div>
@@ -428,6 +441,20 @@ export default function RopeEditorPage() {
         isOpen={showNewDialog}
         onClose={() => setShowNewDialog(false)}
         onCreate={handleCreatePattern}
+      />
+
+      {/* Color Mapping Panel */}
+      <ColorMappingPanel
+        isOpen={showColorMappingPanel}
+        onClose={() => setShowColorMappingPanel(false)}
+        mappings={colorMapping.mappings}
+        ttsMode={colorMapping.ttsMode}
+        onUpdateMapping={colorMapping.updateMapping}
+        onResetToAuto={colorMapping.resetToAuto}
+        onResetAllToAuto={colorMapping.resetAllToAuto}
+        onSetTTSMode={colorMapping.setTTSMode}
+        getColorCount={colorMapping.getColorCount}
+        totalBeadCount={colorMapping.totalBeadCount}
       />
       </div>
     </div>

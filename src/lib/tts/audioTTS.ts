@@ -7,7 +7,6 @@ import type {
   TTSVoiceGender,
   TTSSpeed,
   AudioVoiceConfig,
-  AudioVoiceManifest,
 } from '@/types';
 
 // Base path for audio files
@@ -280,6 +279,49 @@ export async function playColorAudio(
 
   console.warn(`[AudioTTS] No audio found for color: ${colorKey}`);
   return false;
+}
+
+/**
+ * Play audio for a modifier
+ */
+export async function playModifierAudio(
+  voiceId: string,
+  modifierKey: string,
+  speed: TTSSpeed = 'normal',
+  volume: number = 1
+): Promise<boolean> {
+  const voice = AUDIO_VOICES.find((v) => v.id === voiceId);
+  if (!voice) return false;
+
+  const voiceFolder = voiceId.replace(`${voice.language}-`, '');
+  const path = `${AUDIO_BASE_PATH}/${voice.language}/${voiceFolder}/modifiers/${modifierKey}.mp3`;
+
+  const audio = await loadAudio(path);
+  if (!audio) {
+    console.warn(`[AudioTTS] No audio found for modifier: ${modifierKey}`);
+    return false;
+  }
+
+  return new Promise((resolve) => {
+    currentAudio = audio.cloneNode(true) as HTMLAudioElement;
+    currentAudio.playbackRate = SPEED_RATES[speed];
+    currentAudio.volume = volume;
+
+    currentAudio.onended = () => {
+      currentAudio = null;
+      resolve(true);
+    };
+
+    currentAudio.onerror = () => {
+      currentAudio = null;
+      resolve(false);
+    };
+
+    currentAudio.play().catch(() => {
+      currentAudio = null;
+      resolve(false);
+    });
+  });
 }
 
 /**

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useCallback, useState, useRef } from 'react';
 import type { BeadPattern, TTSLanguage, TTSSpeed, TTSMode, TTSFormat, TTSVoiceSource, TTSProgress } from '@/types';
+import type { ColorMapping, TTSMode as ColorMappingTTSMode } from '@/types/colorMapping';
 import {
   UI_TRANSLATIONS,
   getAvailableLanguages,
@@ -26,6 +27,12 @@ interface TTSPanelProps {
   onEditModeChange?: (enabled: boolean) => void;
   navigateToPosition?: number | null;
   onNavigateComplete?: () => void;
+  /** Color mappings for TTS */
+  colorMappings?: ColorMapping[];
+  /** TTS mode for color mappings (colorOnly or full) */
+  colorMappingTTSMode?: ColorMappingTTSMode;
+  /** Callback to change TTS mode */
+  onColorMappingTTSModeChange?: (mode: ColorMappingTTSMode) => void;
 }
 
 export function TTSPanel({
@@ -36,6 +43,9 @@ export function TTSPanel({
   onNavigationModeChange,
   navigateToPosition,
   onNavigateComplete,
+  colorMappings,
+  colorMappingTTSMode = 'colorOnly',
+  onColorMappingTTSModeChange,
 }: TTSPanelProps) {
   const {
     state,
@@ -48,6 +58,7 @@ export function TTSPanel({
     goToPosition,
     updateSettings,
     initializeWithPattern,
+    setColorMappings,
   } = useTTS();
 
   // System voices (Windows/Mac TTS)
@@ -90,6 +101,13 @@ export function TTSPanel({
   useEffect(() => {
     initializeWithPattern(pattern);
   }, [pattern, initializeWithPattern]);
+
+  // Update color mappings when they change
+  useEffect(() => {
+    if (colorMappings && colorMappings.length > 0) {
+      setColorMappings(colorMappings, colorMappingTTSMode);
+    }
+  }, [colorMappings, colorMappingTTSMode, setColorMappings]);
 
   // Check for saved progress when pattern changes (show restore panel instead of auto-restoring)
   // Run only once per pattern ID change
@@ -504,6 +522,27 @@ export function TTSPanel({
             <option value="grouped">{t.grouped}</option>
           </select>
         </div>
+
+        {/* Voice Content Mode - color only vs color + modifiers */}
+        {onColorMappingTTSModeChange && (
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-gray-700">
+              {settings.language === 'uk' ? 'Вміст озвучки' : settings.language === 'ru' ? 'Содержание озвучки' : 'Voice Content'}
+            </label>
+            <select
+              value={colorMappingTTSMode}
+              onChange={(e) => onColorMappingTTSModeChange(e.target.value as ColorMappingTTSMode)}
+              className="px-2 py-1 border rounded text-sm"
+            >
+              <option value="colorOnly">
+                {settings.language === 'uk' ? 'Тільки колір' : settings.language === 'ru' ? 'Только цвет' : 'Color only'}
+              </option>
+              <option value="full">
+                {settings.language === 'uk' ? 'Повна інформація' : settings.language === 'ru' ? 'Полная информация' : 'Full info'}
+              </option>
+            </select>
+          </div>
+        )}
 
         {/* Language */}
         <div className="flex items-center justify-between">

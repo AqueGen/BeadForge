@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { BeadPattern, TTSSettings, TTSState } from '@/types';
+import type { ColorMapping, TTSMode as ColorMappingTTSMode } from '@/types/colorMapping';
 import { DEFAULT_TTS_SETTINGS } from '@/types';
 import { TTSController, isTTSSupported, loadVoices } from '@/lib/tts';
 
@@ -49,6 +50,9 @@ export interface UseTTSReturn {
 
   // Initialize with pattern
   initializeWithPattern: (pattern: BeadPattern) => void;
+
+  // Color mappings
+  setColorMappings: (mappings: ColorMapping[], ttsMode: ColorMappingTTSMode) => void;
 }
 
 export function useTTS(initialSettings?: Partial<TTSSettings>): UseTTSReturn {
@@ -187,6 +191,10 @@ export function useTTS(initialSettings?: Partial<TTSSettings>): UseTTSReturn {
     });
   }, []);
 
+  const setColorMappings = useCallback((mappings: ColorMapping[], ttsMode: ColorMappingTTSMode) => {
+    controllerRef.current?.setColorMappings(mappings, ttsMode);
+  }, []);
+
   return {
     state,
     settings,
@@ -198,5 +206,6 @@ export function useTTS(initialSettings?: Partial<TTSSettings>): UseTTSReturn {
     goToPosition,
     updateSettings,
     initializeWithPattern,
+    setColorMappings,
   };
 }

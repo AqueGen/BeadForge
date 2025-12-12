@@ -196,24 +196,20 @@ export const SKIP_COLOR_INDEX = 255;
 // Default Values
 // ============================================================
 
-export const DEFAULT_COLORS: BeadColor[] = [
-  { r: 255, g: 255, b: 255, name: 'White' },
-  { r: 0, g: 0, b: 0, name: 'Black' },
-  { r: 255, g: 0, b: 0, name: 'Red' },
-  { r: 0, g: 128, b: 0, name: 'Green' },
-  { r: 0, g: 0, b: 255, name: 'Blue' },
-  { r: 255, g: 255, b: 0, name: 'Yellow' },
-  { r: 255, g: 165, b: 0, name: 'Orange' },
-  { r: 128, g: 0, b: 128, name: 'Purple' },
-  { r: 255, g: 192, b: 203, name: 'Pink' },
-  { r: 0, g: 255, b: 255, name: 'Cyan' },
-  { r: 165, g: 42, b: 42, name: 'Brown' },
-  { r: 128, g: 128, b: 128, name: 'Gray' },
-  { r: 192, g: 192, b: 192, name: 'Silver' },
-  { r: 255, g: 215, b: 0, name: 'Gold' },
-  { r: 0, g: 0, b: 128, name: 'Navy' },
-  { r: 128, g: 0, b: 0, name: 'Maroon' },
-];
+// Import colors from central config
+import { DEFAULT_COLORS as CONFIG_COLORS, FREE_COLORS } from '@/config/colors';
+
+/**
+ * Default color palette for pattern editor
+ * @see src/config/colors.ts for full configuration
+ */
+export const DEFAULT_COLORS: BeadColor[] = CONFIG_COLORS;
+
+/**
+ * Free tier colors (6 colors)
+ * @see src/config/colors.ts for tier configuration
+ */
+export { FREE_COLORS };
 
 export const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
   zoom: 20,
@@ -487,3 +483,9 @@ export interface WedgeInfo {
   base: number;            // Width at base
   height: number;          // Number of rows
 }
+
+// ============================================================
+// Color Mapping Types (re-export)
+// ============================================================
+
+export * from './colorMapping';

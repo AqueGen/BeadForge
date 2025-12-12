@@ -76,6 +76,19 @@ COLOR_TRANSLATIONS: Dict[str, Dict[str, str]] = {
     "Azure": {"ru": "лазурный", "uk": "лазурний", "en": "azure"},
 }
 
+# Modifier translations for color mapping feature
+MODIFIER_TRANSLATIONS: Dict[str, Dict[str, str]] = {
+    "light": {"ru": "светлый", "uk": "світлий", "en": "light"},
+    "dark": {"ru": "тёмный", "uk": "темний", "en": "dark"},
+    "transparent": {"ru": "прозрачный", "uk": "прозорий", "en": "transparent"},
+    "matte": {"ru": "матовый", "uk": "матовий", "en": "matte"},
+    "glossy": {"ru": "глянцевый", "uk": "глянцевий", "en": "glossy"},
+    "pearl": {"ru": "перламутровый", "uk": "перламутровий", "en": "pearl"},
+    "metallic": {"ru": "металлик", "uk": "металік", "en": "metallic"},
+    "pastel": {"ru": "пастельный", "uk": "пастельний", "en": "pastel"},
+    "bright": {"ru": "яркий", "uk": "яскравий", "en": "bright"},
+}
+
 # Language to gTTS language code mapping
 LANGUAGE_CODES: Dict[str, str] = {
     "ru": "ru",
@@ -209,17 +222,84 @@ def generate_number_audio(
     return generated
 
 
+def generate_modifier_audio(
+    modifier_key: str,
+    languages: Optional[List[str]] = None,
+    voice_configs: Optional[List[dict]] = None,
+    overwrite: bool = False
+) -> int:
+    """Generate audio files for a single modifier in specified languages"""
+    if languages is None:
+        languages = list(LANGUAGE_CODES.keys())
+
+    if voice_configs is None:
+        voice_configs = VOICE_CONFIGS
+
+    translations = MODIFIER_TRANSLATIONS.get(modifier_key)
+    if not translations:
+        print(f"Warning: No translations found for modifier '{modifier_key}'")
+        return 0
+
+    generated = 0
+    filename = modifier_key.lower()
+
+    for config in voice_configs:
+        lang = config["language"]
+        if lang not in languages:
+            continue
+
+        text = translations.get(lang)
+        if not text:
+            print(f"Warning: No {lang} translation for '{modifier_key}'")
+            continue
+
+        output_dir = get_output_dir(lang, config["folder"]) / "modifiers"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        output_path = output_dir / f"{filename}.mp3"
+
+        if output_path.exists() and not overwrite:
+            print(f"Skipping (exists): {output_path}")
+            continue
+
+        print(f"Generating: {output_path} - '{text}'")
+
+        if generate_audio_gtts(text, lang, output_path, config.get("tld", "com")):
+            generated += 1
+
+    return generated
+
+
+def generate_all_modifiers(
+    languages: Optional[List[str]] = None,
+    modifiers: Optional[List[str]] = None,
+    overwrite: bool = False
+) -> int:
+    """Generate audio files for all modifiers"""
+    if modifiers is None:
+        modifiers = list(MODIFIER_TRANSLATIONS.keys())
+
+    generated = 0
+    for modifier in modifiers:
+        generated += generate_modifier_audio(
+            modifier, languages=languages, overwrite=overwrite
+        )
+
+    return generated
+
+
 def generate_all_audio(
     languages: Optional[List[str]] = None,
     colors: Optional[List[str]] = None,
     include_numbers: bool = True,
+    include_modifiers: bool = True,
     overwrite: bool = False
 ) -> Dict[str, int]:
     """Generate all audio files"""
     if colors is None:
         colors = list(COLOR_TRANSLATIONS.keys())
 
-    stats = {"colors": 0, "numbers": 0}
+    stats = {"colors": 0, "numbers": 0, "modifiers": 0}
 
     print(f"\n{'='*60}")
     print("BeadForge TTS Audio Generator")
@@ -227,6 +307,7 @@ def generate_all_audio(
     print(f"Languages: {languages or 'all'}")
     print(f"Colors: {len(colors)}")
     print(f"Include numbers: {include_numbers}")
+    print(f"Include modifiers: {include_modifiers}")
     print(f"Overwrite existing: {overwrite}")
     print(f"{'='*60}\n")
 
@@ -244,10 +325,18 @@ def generate_all_audio(
             max_number=100, languages=languages, overwrite=overwrite
         )
 
+    # Generate modifier audio
+    if include_modifiers:
+        print("\nGenerating modifier audio files...")
+        stats["modifiers"] = generate_all_modifiers(
+            languages=languages, overwrite=overwrite
+        )
+
     print(f"\n{'='*60}")
     print(f"Generation complete!")
     print(f"Colors generated: {stats['colors']}")
     print(f"Numbers generated: {stats['numbers']}")
+    print(f"Modifiers generated: {stats['modifiers']}")
     print(f"{'='*60}\n")
 
     return stats
@@ -280,6 +369,18 @@ def main():
     )
 
     parser.add_argument(
+        "--no-modifiers",
+        action="store_true",
+        help="Skip generating modifier audio files"
+    )
+
+    parser.add_argument(
+        "--modifiers-only",
+        action="store_true",
+        help="Generate only modifier audio files"
+    )
+
+    parser.add_argument(
         "--overwrite",
         action="store_true",
         help="Overwrite existing audio files"
@@ -291,6 +392,12 @@ def main():
         help="List all available color names and exit"
     )
 
+    parser.add_argument(
+        "--list-modifiers",
+        action="store_true",
+        help="List all available modifier names and exit"
+    )
+
     args = parser.parse_args()
 
     if args.list_colors:
@@ -298,6 +405,13 @@ def main():
         for color in sorted(COLOR_TRANSLATIONS.keys()):
             trans = COLOR_TRANSLATIONS[color]
             print(f"  {color}: ru='{trans['ru']}', uk='{trans['uk']}', en='{trans['en']}'")
+        return
+
+    if args.list_modifiers:
+        print("Available modifiers:")
+        for modifier in sorted(MODIFIER_TRANSLATIONS.keys()):
+            trans = MODIFIER_TRANSLATIONS[modifier]
+            print(f"  {modifier}: ru='{trans['ru']}', uk='{trans['uk']}', en='{trans['en']}'")
         return
 
     if not GTTS_AVAILABLE:
@@ -309,10 +423,21 @@ def main():
         print("  - Azure Speech: pip install azure-cognitiveservices-speech")
         sys.exit(1)
 
+    # Handle --modifiers-only flag
+    if args.modifiers_only:
+        print("\nGenerating modifier audio files only...")
+        generated = generate_all_modifiers(
+            languages=args.language,
+            overwrite=args.overwrite
+        )
+        print(f"\nModifiers generated: {generated}")
+        return
+
     generate_all_audio(
         languages=args.language,
         colors=args.colors,
         include_numbers=not args.no_numbers,
+        include_modifiers=not args.no_modifiers,
         overwrite=args.overwrite
     )
 

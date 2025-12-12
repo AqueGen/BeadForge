@@ -3,6 +3,7 @@
 import { FC, useRef } from 'react';
 import type { DrawingTool } from '@/types';
 import { cn } from '@/lib/utils';
+import { ColorMappingButton } from './ColorMappingButton';
 
 interface ToolbarProps {
   tool?: DrawingTool;
@@ -18,6 +19,11 @@ interface ToolbarProps {
   onShowStats: () => void;
   onSaveJBB?: () => void;
   onLoadJBB?: (file: File) => void;
+  // Color mapping props
+  showColorMapping?: boolean;
+  colorMappingHasWarning?: boolean;
+  colorMappingWarningCount?: number;
+  onColorMappingClick?: () => void;
 }
 
 interface ToolButtonProps {
@@ -60,6 +66,10 @@ export const Toolbar: FC<ToolbarProps> = ({
   onShowStats,
   onSaveJBB,
   onLoadJBB,
+  showColorMapping,
+  colorMappingHasWarning,
+  colorMappingWarningCount,
+  onColorMappingClick,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jbbInputRef = useRef<HTMLInputElement>(null);
@@ -196,6 +206,17 @@ export const Toolbar: FC<ToolbarProps> = ({
           📊 Stats
         </ToolButton>
       </div>
+
+      {/* Color Mapping */}
+      {showColorMapping && onColorMappingClick && (
+        <div className="flex gap-1">
+          <ColorMappingButton
+            hasWarning={colorMappingHasWarning || false}
+            warningCount={colorMappingWarningCount}
+            onClick={onColorMappingClick}
+          />
+        </div>
+      )}
     </div>
   );
 };

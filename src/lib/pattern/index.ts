@@ -55,3 +55,18 @@ export {
   downloadJBB,
   type JBBData,
 } from './jbbFormat';
+
+// Color matching for TTS
+export {
+  VOICED_COLORS,
+  MODIFIER_VOICES,
+  colorDistance,
+  findClosestVoicedColor,
+  getVoicedColor,
+  getVoicedColorByKey,
+  getModifierVoice,
+  createAutoMapping,
+  createAutoMappings,
+  isMappingVoiced,
+  areAllMappingsVoiced,
+} from './colorMatching';
