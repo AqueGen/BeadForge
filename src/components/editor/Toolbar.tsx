@@ -5,6 +5,13 @@ import type { DrawingTool } from '@/types';
 import { cn } from '@/lib/utils';
 import { ColorMappingButton } from './ColorMappingButton';
 
+export interface PanelVisibility {
+  draft: boolean;
+  corrected: boolean;
+  simulation: boolean;
+  tts: boolean;
+}
+
 interface ToolbarProps {
   tool?: DrawingTool;
   onToolChange?: (tool: DrawingTool) => void;
@@ -24,6 +31,9 @@ interface ToolbarProps {
   colorMappingHasWarning?: boolean;
   colorMappingWarningCount?: number;
   onColorMappingClick?: () => void;
+  // Panel visibility props
+  panelVisibility?: PanelVisibility;
+  onPanelVisibilityChange?: (panel: keyof PanelVisibility) => void;
 }
 
 interface ToolButtonProps {
@@ -52,6 +62,28 @@ const ToolbarGroup: FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="flex gap-1 border-r border-gray-200 pr-4">{children}</div>
 );
 
+interface ToggleButtonProps {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  title?: string;
+}
+
+const ToggleButton: FC<ToggleButtonProps> = ({ active, onClick, children, title }) => (
+  <button
+    onClick={onClick}
+    title={title}
+    className={cn(
+      'rounded border px-2 py-1 text-xs transition-colors',
+      active
+        ? 'border-primary-500 bg-primary-100 text-primary-700'
+        : 'border-gray-300 bg-gray-100 text-gray-400 hover:bg-gray-200'
+    )}
+  >
+    {children}
+  </button>
+);
+
 export const Toolbar: FC<ToolbarProps> = ({
   tool,
   onToolChange,
@@ -70,6 +102,8 @@ export const Toolbar: FC<ToolbarProps> = ({
   colorMappingHasWarning,
   colorMappingWarningCount,
   onColorMappingClick,
+  panelVisibility,
+  onPanelVisibilityChange,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jbbInputRef = useRef<HTMLInputElement>(null);
@@ -215,6 +249,41 @@ export const Toolbar: FC<ToolbarProps> = ({
             warningCount={colorMappingWarningCount}
             onClick={onColorMappingClick}
           />
+        </div>
+      )}
+
+      {/* Panel Visibility Toggles */}
+      {panelVisibility && onPanelVisibilityChange && (
+        <div className="flex gap-1 ml-auto">
+          <span className="text-xs text-gray-400 self-center mr-1">Панелі:</span>
+          <ToggleButton
+            active={panelVisibility.draft}
+            onClick={() => onPanelVisibilityChange('draft')}
+            title="Показати/сховати чернетку"
+          >
+            Чернетка
+          </ToggleButton>
+          <ToggleButton
+            active={panelVisibility.corrected}
+            onClick={() => onPanelVisibilityChange('corrected')}
+            title="Показати/сховати виправлений вигляд"
+          >
+            Виправлений
+          </ToggleButton>
+          <ToggleButton
+            active={panelVisibility.simulation}
+            onClick={() => onPanelVisibilityChange('simulation')}
+            title="Показати/сховати симуляцію"
+          >
+            Симуляція
+          </ToggleButton>
+          <ToggleButton
+            active={panelVisibility.tts}
+            onClick={() => onPanelVisibilityChange('tts')}
+            title="Показати/сховати TTS панель"
+          >
+            TTS
+          </ToggleButton>
         </div>
       )}
     </div>

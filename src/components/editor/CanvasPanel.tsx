@@ -106,12 +106,20 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
       if (completedBeads > 0) {
         renderCompletedOverlay(ctx, pattern, zoom, completedBeads);
       }
-      // Draw highlights for TTS on draft view only
+      // Draw highlights for TTS
       if (highlightedBeads && highlightedBeads.positions.length > 0) {
         renderHighlights(ctx, highlightedBeads, pattern.height, zoom);
       }
     } else if (viewType === 'corrected') {
       renderCorrected(ctx, pattern, zoom, brickOffset);
+      // Draw dimmed overlay for completed beads (with brick offset)
+      if (completedBeads > 0) {
+        renderCompletedOverlay(ctx, pattern, zoom, completedBeads, brickOffset);
+      }
+      // Draw highlights for TTS (with brick offset)
+      if (highlightedBeads && highlightedBeads.positions.length > 0) {
+        renderHighlights(ctx, highlightedBeads, pattern.height, zoom, brickOffset);
+      }
     } else {
       renderSimulation(ctx, pattern, zoom, shift, brickOffset);
     }
@@ -135,9 +143,11 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
       // For corrected view, account for brick offset on odd rows
       let adjustedPixelX = pixelX;
       if (viewType === 'corrected' && y >= 0 && y < pattern.height) {
+        // Base offset to keep all beads visible when brickOffset is negative
+        const baseOffset = brickOffset < 0 ? Math.abs(brickOffset) * zoom : 0;
         // Odd rows are shifted by brickOffset
         const dx = y % 2 === 1 ? zoom * brickOffset : 0;
-        adjustedPixelX = pixelX - dx;
+        adjustedPixelX = pixelX - baseOffset - dx;
       }
 
       const x = Math.floor(adjustedPixelX / zoom);
@@ -339,12 +349,15 @@ function renderCorrected(
   zoom: number,
   brickOffset: number
 ) {
+  // Base offset to keep all beads visible when brickOffset is negative
+  const baseOffset = brickOffset < 0 ? Math.abs(brickOffset) * zoom : 0;
+
   for (let y = 0; y < pattern.height; y++) {
     const dx = y % 2 === 1 ? zoom * brickOffset : 0;
 
     for (let x = 0; x < pattern.width; x++) {
       const colorIndex = pattern.field[y * pattern.width + x];
-      const screenX = x * zoom + dx;
+      const screenX = x * zoom + baseOffset + dx;
       const screenY = (pattern.height - 1 - y) * zoom;
 
       // Handle skip cells
@@ -367,6 +380,8 @@ function renderSimulation(
   brickOffset: number
 ) {
   const visibleWidth = Math.ceil(pattern.width / 2);
+  // Base offset to keep all beads visible when brickOffset is negative
+  const baseOffset = brickOffset < 0 ? Math.abs(brickOffset) * zoom : 0;
 
   for (let y = 0; y < pattern.height; y++) {
     // Brick offset based on row, same as corrected view
@@ -380,7 +395,7 @@ function renderSimulation(
       if (shiftedX >= visibleWidth) continue;
 
       const colorIndex = pattern.field[y * pattern.width + x];
-      const screenX = shiftedX * zoom + dx;
+      const screenX = shiftedX * zoom + baseOffset + dx;
       const screenY = (pattern.height - 1 - y) * zoom;
 
       // Handle skip cells
@@ -399,13 +414,19 @@ function renderHighlights(
   ctx: CanvasRenderingContext2D,
   highlightedBeads: HighlightedBeads,
   patternHeight: number,
-  zoom: number
+  zoom: number,
+  brickOffset: number = 0
 ) {
+  // Base offset to keep all beads visible when brickOffset is negative
+  const baseOffset = brickOffset < 0 ? Math.abs(brickOffset) * zoom : 0;
+
   ctx.strokeStyle = '#ff0000';
   ctx.lineWidth = 3;
 
   for (const pos of highlightedBeads.positions) {
-    const screenX = pos.x * zoom;
+    // Apply brick offset on odd rows (for corrected view)
+    const dx = pos.y % 2 === 1 ? zoom * brickOffset : 0;
+    const screenX = pos.x * zoom + baseOffset + dx;
     const screenY = (patternHeight - 1 - pos.y) * zoom;
 
     // Draw highlight border
@@ -415,7 +436,9 @@ function renderHighlights(
   // Draw a filled semi-transparent overlay for better visibility
   ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
   for (const pos of highlightedBeads.positions) {
-    const screenX = pos.x * zoom;
+    // Apply brick offset on odd rows (for corrected view)
+    const dx = pos.y % 2 === 1 ? zoom * brickOffset : 0;
+    const screenX = pos.x * zoom + baseOffset + dx;
     const screenY = (patternHeight - 1 - pos.y) * zoom;
     ctx.fillRect(screenX, screenY, zoom - 1, zoom - 1);
   }
@@ -431,10 +454,14 @@ function renderCompletedOverlay(
   ctx: CanvasRenderingContext2D,
   pattern: BeadPattern,
   zoom: number,
-  completedBeads: number
+  completedBeads: number,
+  brickOffset: number = 0
 ) {
   const usedHeight = getUsedHeight(pattern);
   if (usedHeight === 0) return;
+
+  // Base offset to keep all beads visible when brickOffset is negative
+  const baseOffset = brickOffset < 0 ? Math.abs(brickOffset) * zoom : 0;
 
   ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';  // Semi-transparent dark overlay
 
@@ -442,8 +469,10 @@ function renderCompletedOverlay(
     const coord = positionToCoordinates(pos, pattern, usedHeight);
     if (!coord) continue;
 
+    // Apply brick offset on odd rows (for corrected view)
+    const dx = coord.y % 2 === 1 ? zoom * brickOffset : 0;
     // Convert to screen coordinates (y=0 is visual bottom)
-    const screenX = coord.x * zoom;
+    const screenX = coord.x * zoom + baseOffset + dx;
     const screenY = (pattern.height - 1 - coord.y) * zoom;
 
     ctx.fillRect(screenX, screenY, zoom - 1, zoom - 1);

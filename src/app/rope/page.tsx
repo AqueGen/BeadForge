@@ -1,14 +1,15 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { Navigation } from '@/components/layout/Navigation';
-import { coordinatesToPosition } from '@/lib/pattern';
-import { Toolbar } from '@/components/editor/Toolbar';
+import { coordinatesToPosition, calculateRepeat } from '@/lib/pattern';
+import { Toolbar, type PanelVisibility } from '@/components/editor/Toolbar';
 import { ColorPalette } from '@/components/editor/ColorPalette';
 import { CanvasPanel } from '@/components/editor/CanvasPanel';
 import { ColorMappingPanel } from '@/components/editor/ColorMappingPanel';
 import { TTSPanel } from '@/components/tts';
+import { ConfirmDialog, StatsModal, type StatsModalData } from '@/components/ui/Modals';
 import { usePattern } from '@/hooks/usePattern';
 import { useColorMapping } from '@/hooks/useColorMapping';
 import { getSamplePatternList, getHighlightedBeads } from '@/lib/pattern';
@@ -103,6 +104,36 @@ export default function RopeEditorPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true); // Default: collapsed
   const [showColorMappingPanel, setShowColorMappingPanel] = useState(false);
   const [brickOffset, setBrickOffset] = useState(0.5); // Default: half bead shift
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showStatsModal, setShowStatsModal] = useState(false);
+  const [panelVisibility, setPanelVisibility] = useState<PanelVisibility>({
+    draft: true,
+    corrected: true,
+    simulation: true,
+    tts: true,
+  });
+
+  // Load panelVisibility from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('beadforge_panel_visibility');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setPanelVisibility(parsed);
+      } catch {
+        // ignore invalid JSON
+      }
+    }
+  }, []);
+
+  // Handle panel visibility toggle
+  const handlePanelVisibilityChange = useCallback((panel: keyof PanelVisibility) => {
+    setPanelVisibility(prev => {
+      const updated = { ...prev, [panel]: !prev[panel] };
+      localStorage.setItem('beadforge_panel_visibility', JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
 
   // Load brickOffset from localStorage on mount
   useEffect(() => {
@@ -123,6 +154,68 @@ export default function RopeEditorPage() {
 
   // Color mapping hook
   const colorMapping = useColorMapping(pattern);
+
+  // Calculate pattern stats for modal
+  const patternStats = useMemo((): StatsModalData | null => {
+    if (!pattern) return null;
+
+    const stats: StatsModalData = {
+      name: pattern.name || 'Жгут',
+      width: pattern.width,
+      height: pattern.height,
+      usedHeight: pattern.height,
+      repeat: calculateRepeat(pattern),
+      totalBeads: 0,
+      colorCount: 0,
+      colorDistribution: [],
+    };
+
+    // Count beads per color
+    const colorCounts = new Map<number, number>();
+    for (let i = 0; i < pattern.field.length; i++) {
+      const colorIndex = pattern.field[i];
+      if (colorIndex !== SKIP_COLOR_INDEX) {
+        colorCounts.set(colorIndex, (colorCounts.get(colorIndex) || 0) + 1);
+        stats.totalBeads++;
+      }
+    }
+
+    // Calculate used height (first non-empty row from top)
+    let usedHeight = pattern.height;
+    for (let y = pattern.height - 1; y >= 0; y--) {
+      let hasColor = false;
+      for (let x = 0; x < pattern.width; x++) {
+        if (pattern.field[y * pattern.width + x] !== 0) {
+          hasColor = true;
+          break;
+        }
+      }
+      if (hasColor) {
+        usedHeight = y + 1;
+        break;
+      }
+    }
+    stats.usedHeight = usedHeight;
+
+    // Build color distribution
+    stats.colorCount = colorCounts.size;
+    colorCounts.forEach((count, colorIndex) => {
+      const color = DEFAULT_COLORS[colorIndex];
+      if (color) {
+        stats.colorDistribution.push({
+          name: color.name || `Колір ${colorIndex}`,
+          color: `rgb(${color.r}, ${color.g}, ${color.b})`,
+          count,
+          percentage: stats.totalBeads > 0 ? (count / stats.totalBeads) * 100 : 0,
+        });
+      }
+    });
+
+    // Sort by count descending
+    stats.colorDistribution.sort((a, b) => b.count - a.count);
+
+    return stats;
+  }, [pattern]);
 
   // Toggle sidebar - expanding enables edit mode, collapsing disables it
   const handleSidebarToggle = useCallback(() => {
@@ -239,24 +332,21 @@ export default function RopeEditorPage() {
       <Toolbar
         zoom={zoom}
         onZoomChange={setZoom}
-        onClear={() => actions.clear()}
+        onClear={() => setShowClearConfirm(true)}
         onMirrorH={() => actions.mirrorHorizontal()}
         onMirrorV={() => actions.mirrorVertical()}
         onSave={() => actions.save()}
         onLoad={actions.load}
         onNew={() => setShowNewDialog(true)}
-        onShowStats={() => {
-          const stats = actions.getStats();
-          alert(
-            `Ширина: ${stats.width}\nВисота: ${stats.usedHeight}/${stats.height}\nРапорт: ${stats.repeat}\nВсього бісерин: ${stats.totalBeads}`
-          );
-        }}
+        onShowStats={() => setShowStatsModal(true)}
         onSaveJBB={() => actions.saveJBB()}
         onLoadJBB={actions.loadJBB}
         showColorMapping={true}
         colorMappingHasWarning={colorMapping.hasDuplicateMappings}
         colorMappingWarningCount={colorMapping.duplicateMappingCount}
         onColorMappingClick={() => setShowColorMappingPanel(true)}
+        panelVisibility={panelVisibility}
+        onPanelVisibilityChange={handlePanelVisibilityChange}
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -402,59 +492,69 @@ export default function RopeEditorPage() {
 
         {/* Canvas Area - overflow-hidden to prevent page scroll */}
         <main className="flex flex-1 gap-4 overflow-hidden bg-gray-200 p-4">
-          <CanvasPanel
-            title="Чернетка (редагування)"
-            pattern={pattern}
-            zoom={zoom}
-            viewType="draft"
-            onBeadClick={handleBeadClick}
-            onBeadDrag={handleBeadDrag}
-            highlightedBeads={highlightedBeads}
-            completedBeads={completedBeads}
-            scrollContainerRef={draftScrollRef}
-            onScroll={(top, left) => handleSyncScroll(top, left, 'draft')}
-          />
+          {panelVisibility.draft && (
+            <CanvasPanel
+              title="Чернетка (редагування)"
+              pattern={pattern}
+              zoom={zoom}
+              viewType="draft"
+              onBeadClick={handleBeadClick}
+              onBeadDrag={handleBeadDrag}
+              highlightedBeads={highlightedBeads}
+              completedBeads={completedBeads}
+              scrollContainerRef={draftScrollRef}
+              onScroll={(top, left) => handleSyncScroll(top, left, 'draft')}
+            />
+          )}
 
-          <CanvasPanel
-            title="Виправлений вигляд"
-            pattern={pattern}
-            zoom={zoom}
-            viewType="corrected"
-            brickOffset={brickOffset}
-            onBrickOffsetChange={handleBrickOffsetChange}
-            onBeadClick={handleBeadClick}
-            onBeadDrag={handleBeadDrag}
-            scrollContainerRef={correctedScrollRef}
-            onScroll={(top, left) => handleSyncScroll(top, left, 'corrected')}
-          />
+          {panelVisibility.corrected && (
+            <CanvasPanel
+              title="Виправлений вигляд"
+              pattern={pattern}
+              zoom={zoom}
+              viewType="corrected"
+              brickOffset={brickOffset}
+              onBrickOffsetChange={handleBrickOffsetChange}
+              onBeadClick={handleBeadClick}
+              onBeadDrag={handleBeadDrag}
+              highlightedBeads={highlightedBeads}
+              completedBeads={completedBeads}
+              scrollContainerRef={correctedScrollRef}
+              onScroll={(top, left) => handleSyncScroll(top, left, 'corrected')}
+            />
+          )}
 
-          <CanvasPanel
-            title="Симуляція"
-            pattern={pattern}
-            zoom={zoom}
-            viewType="simulation"
-            shift={shift}
-            onShiftChange={setShift}
-            brickOffset={brickOffset}
-            scrollContainerRef={simulationScrollRef}
-            onScroll={(top, left) => handleSyncScroll(top, left, 'simulation')}
-          />
+          {panelVisibility.simulation && (
+            <CanvasPanel
+              title="Симуляція"
+              pattern={pattern}
+              zoom={zoom}
+              viewType="simulation"
+              shift={shift}
+              onShiftChange={setShift}
+              brickOffset={brickOffset}
+              scrollContainerRef={simulationScrollRef}
+              onScroll={(top, left) => handleSyncScroll(top, left, 'simulation')}
+            />
+          )}
         </main>
 
         {/* TTS Panel */}
-        <aside className="w-80 shrink-0 overflow-y-auto border-l bg-white">
-          <TTSPanel
-            pattern={pattern}
-            onTTSStateChange={handleTTSStateChange}
-            onCompletedBeadsChange={setCompletedBeads}
-            onNavigationModeChange={setTtsNavigationMode}
-            navigateToPosition={ttsNavigateTarget}
-            onNavigateComplete={() => setTtsNavigateTarget(null)}
-            colorMappings={colorMapping.mappings}
-            colorMappingTTSMode={colorMapping.ttsMode}
-            onColorMappingTTSModeChange={colorMapping.setTTSMode}
-          />
-        </aside>
+        {panelVisibility.tts && (
+          <aside className="w-80 shrink-0 overflow-y-auto border-l bg-white">
+            <TTSPanel
+              pattern={pattern}
+              onTTSStateChange={handleTTSStateChange}
+              onCompletedBeadsChange={setCompletedBeads}
+              onNavigationModeChange={setTtsNavigationMode}
+              navigateToPosition={ttsNavigateTarget}
+              onNavigateComplete={() => setTtsNavigateTarget(null)}
+              colorMappings={colorMapping.mappings}
+              colorMappingTTSMode={colorMapping.ttsMode}
+              onColorMappingTTSModeChange={colorMapping.setTTSMode}
+            />
+          </aside>
+        )}
       </div>
 
       {/* New Pattern Dialog */}
@@ -477,6 +577,25 @@ export default function RopeEditorPage() {
         getColorCount={colorMapping.getColorCount}
         totalBeadCount={colorMapping.totalBeadCount}
         duplicateIndices={colorMapping.duplicateMappingIndices}
+      />
+
+      {/* Clear Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showClearConfirm}
+        onClose={() => setShowClearConfirm(false)}
+        onConfirm={() => actions.clear()}
+        title="Очистити схему?"
+        message="Всі бісерини будуть видалені. Цю дію неможливо скасувати."
+        confirmText="Очистити"
+        cancelText="Скасувати"
+        variant="danger"
+      />
+
+      {/* Stats Modal */}
+      <StatsModal
+        isOpen={showStatsModal}
+        onClose={() => setShowStatsModal(false)}
+        stats={patternStats}
       />
       </div>
     </div>
