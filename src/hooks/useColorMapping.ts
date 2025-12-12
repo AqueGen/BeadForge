@@ -127,6 +127,8 @@ export interface UseColorMappingResult {
   hasDuplicateMappings: boolean;
   /** Number of colors involved in duplicate mappings */
   duplicateMappingCount: number;
+  /** Indices of colors that have duplicate TTS mappings */
+  duplicateMappingIndices: number[];
   /** Update mapping for a specific color */
   updateMapping: (
     originalIndex: number,
@@ -337,6 +339,7 @@ export function useColorMapping(pattern: BeadPattern | null): UseColorMappingRes
     totalBeadCount,
     hasDuplicateMappings,
     duplicateMappingCount,
+    duplicateMappingIndices,
     updateMapping,
     resetToAuto,
     resetAllToAuto,

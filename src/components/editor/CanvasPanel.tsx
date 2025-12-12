@@ -6,6 +6,13 @@ import { SKIP_COLOR_INDEX } from '@/types';
 import { colorToRgba } from '@/lib/utils';
 import { positionToCoordinates, getUsedHeight } from '@/lib/pattern';
 
+// Available brick offset values (matching reference site)
+export const BRICK_OFFSET_VALUES = [
+  -0.5, -0.1, 0.1, 0.12, 0.15, 0.17, 0.2, 0.22, 0.25, 0.27,
+  0.3, 0.32, 0.35, 0.37, 0.4, 0.42, 0.45, 0.47, 0.5, 0.52,
+  0.55, 0.57, 0.6, 0.62, 0.65, 0.67, 0.7, 0.72, 0.75, 0.77, 0.8
+];
+
 interface CanvasPanelProps {
   title: string;
   pattern: BeadPattern;
@@ -13,6 +20,9 @@ interface CanvasPanelProps {
   viewType: ViewType;
   shift?: number;
   onShiftChange?: (shift: number) => void;
+  /** Brick offset for corrected/simulation views (0.5 = half bead shift) */
+  brickOffset?: number;
+  onBrickOffsetChange?: (offset: number) => void;
   onBeadClick?: (x: number, y: number) => void;
   onBeadDrag?: (x: number, y: number) => void;
   highlightedBeads?: HighlightedBeads | null;
@@ -29,6 +39,8 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
   viewType,
   shift = 0,
   onShiftChange,
+  brickOffset = 0.5,
+  onBrickOffsetChange,
   onBeadClick,
   onBeadDrag,
   highlightedBeads,
@@ -71,11 +83,12 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
       canvasWidth = pattern.width * zoom;
       canvasHeight = pattern.height * zoom;
     } else if (viewType === 'corrected') {
-      canvasWidth = (pattern.width + 0.5) * zoom;
+      // Canvas width depends on brick offset (need extra space for shifted rows)
+      canvasWidth = (pattern.width + Math.abs(brickOffset)) * zoom;
       canvasHeight = pattern.height * zoom;
     } else {
       // simulation
-      canvasWidth = (Math.ceil(pattern.width / 2) + 0.5) * zoom;
+      canvasWidth = (Math.ceil(pattern.width / 2) + Math.abs(brickOffset)) * zoom;
       canvasHeight = pattern.height * zoom;
     }
 
@@ -98,11 +111,11 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
         renderHighlights(ctx, highlightedBeads, pattern.height, zoom);
       }
     } else if (viewType === 'corrected') {
-      renderCorrected(ctx, pattern, zoom);
+      renderCorrected(ctx, pattern, zoom, brickOffset);
     } else {
-      renderSimulation(ctx, pattern, zoom, shift);
+      renderSimulation(ctx, pattern, zoom, shift, brickOffset);
     }
-  }, [pattern, zoom, viewType, shift, highlightedBeads, completedBeads]);
+  }, [pattern, zoom, viewType, shift, brickOffset, highlightedBeads, completedBeads]);
 
   const getGridPosition = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -122,8 +135,8 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
       // For corrected view, account for brick offset on odd rows
       let adjustedPixelX = pixelX;
       if (viewType === 'corrected' && y >= 0 && y < pattern.height) {
-        // Odd rows are shifted right by half a bead
-        const dx = y % 2 === 1 ? zoom / 2 : 0;
+        // Odd rows are shifted by brickOffset
+        const dx = y % 2 === 1 ? zoom * brickOffset : 0;
         adjustedPixelX = pixelX - dx;
       }
 
@@ -135,7 +148,7 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
 
       return { x, y };
     },
-    [zoom, pattern.width, pattern.height, viewType]
+    [zoom, pattern.width, pattern.height, viewType, brickOffset]
   );
 
   const handleMouseDown = useCallback(
@@ -193,6 +206,22 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
       <div className="border-b bg-gray-50 px-4 py-2">
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-medium text-gray-700">{title}</h4>
+          {viewType === 'corrected' && onBrickOffsetChange && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500">Зсув рядка:</span>
+              <select
+                value={brickOffset}
+                onChange={(e) => onBrickOffsetChange(parseFloat(e.target.value))}
+                className="rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                {BRICK_OFFSET_VALUES.map((val) => (
+                  <option key={val} value={val}>
+                    {val}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           {viewType === 'simulation' && onShiftChange && (
             <div className="flex items-center gap-3">
               <span className="text-xs text-gray-400">← Затисніть ЛКМ і тягніть →</span>
@@ -307,10 +336,11 @@ function renderDraft(
 function renderCorrected(
   ctx: CanvasRenderingContext2D,
   pattern: BeadPattern,
-  zoom: number
+  zoom: number,
+  brickOffset: number
 ) {
   for (let y = 0; y < pattern.height; y++) {
-    const dx = y % 2 === 1 ? zoom / 2 : 0;
+    const dx = y % 2 === 1 ? zoom * brickOffset : 0;
 
     for (let x = 0; x < pattern.width; x++) {
       const colorIndex = pattern.field[y * pattern.width + x];
@@ -333,13 +363,14 @@ function renderSimulation(
   ctx: CanvasRenderingContext2D,
   pattern: BeadPattern,
   zoom: number,
-  shift: number
+  shift: number,
+  brickOffset: number
 ) {
   const visibleWidth = Math.ceil(pattern.width / 2);
 
   for (let y = 0; y < pattern.height; y++) {
     // Brick offset based on row, same as corrected view
-    const dx = y % 2 === 1 ? zoom / 2 : 0;
+    const dx = y % 2 === 1 ? zoom * brickOffset : 0;
 
     for (let x = 0; x < pattern.width; x++) {
       // Apply shift as horizontal rotation (wrapping around the tube)

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { Navigation } from '@/components/layout/Navigation';
 import { coordinatesToPosition } from '@/lib/pattern';
@@ -102,6 +102,24 @@ export default function RopeEditorPage() {
   const [ttsNavigateTarget, setTtsNavigateTarget] = useState<number | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true); // Default: collapsed
   const [showColorMappingPanel, setShowColorMappingPanel] = useState(false);
+  const [brickOffset, setBrickOffset] = useState(0.5); // Default: half bead shift
+
+  // Load brickOffset from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('beadforge_brick_offset');
+    if (saved !== null) {
+      const parsed = parseFloat(saved);
+      if (!isNaN(parsed)) {
+        setBrickOffset(parsed);
+      }
+    }
+  }, []);
+
+  // Save brickOffset to localStorage when it changes
+  const handleBrickOffsetChange = useCallback((offset: number) => {
+    setBrickOffset(offset);
+    localStorage.setItem('beadforge_brick_offset', String(offset));
+  }, []);
 
   // Color mapping hook
   const colorMapping = useColorMapping(pattern);
@@ -402,6 +420,8 @@ export default function RopeEditorPage() {
             pattern={pattern}
             zoom={zoom}
             viewType="corrected"
+            brickOffset={brickOffset}
+            onBrickOffsetChange={handleBrickOffsetChange}
             onBeadClick={handleBeadClick}
             onBeadDrag={handleBeadDrag}
             scrollContainerRef={correctedScrollRef}
@@ -415,6 +435,7 @@ export default function RopeEditorPage() {
             viewType="simulation"
             shift={shift}
             onShiftChange={setShift}
+            brickOffset={brickOffset}
             scrollContainerRef={simulationScrollRef}
             onScroll={(top, left) => handleSyncScroll(top, left, 'simulation')}
           />
@@ -455,6 +476,7 @@ export default function RopeEditorPage() {
         onSetTTSMode={colorMapping.setTTSMode}
         getColorCount={colorMapping.getColorCount}
         totalBeadCount={colorMapping.totalBeadCount}
+        duplicateIndices={colorMapping.duplicateMappingIndices}
       />
       </div>
     </div>

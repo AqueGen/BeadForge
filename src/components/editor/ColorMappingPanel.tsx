@@ -35,15 +35,18 @@ interface ColorMappingPanelProps {
   getColorCount: (originalIndex: number) => number;
   /** Total bead count */
   totalBeadCount?: number;
+  /** Indices of colors that have duplicate TTS mappings */
+  duplicateIndices?: number[];
 }
 
 /** Single color mapping row */
 const ColorMappingRow: FC<{
   mapping: ColorMapping;
   beadCount: number;
+  isDuplicate: boolean;
   onUpdate: (mappedColorIndex: number, modifiers: ColorModifiers) => void;
   onReset: () => void;
-}> = ({ mapping, beadCount, onUpdate, onReset }) => {
+}> = ({ mapping, beadCount, isDuplicate, onUpdate, onReset }) => {
   const [expanded, setExpanded] = useState(false);
   const voicedColor = getVoicedColor(mapping.mappedColorIndex);
 
@@ -75,15 +78,25 @@ const ColorMappingRow: FC<{
   const originalColorStyle = `rgb(${r}, ${g}, ${b})`;
 
   return (
-    <div className="border rounded-lg p-3 bg-white">
+    <div className={`border rounded-lg p-3 bg-white ${isDuplicate ? 'border-orange-400 border-2' : ''}`}>
       {/* Main row */}
       <div className="flex items-center gap-3">
-        {/* Original color swatch */}
-        <div
-          className="w-8 h-8 rounded border border-gray-300 shrink-0"
-          style={{ backgroundColor: originalColorStyle }}
-          title={`RGB(${r}, ${g}, ${b})`}
-        />
+        {/* Original color swatch with duplicate warning */}
+        <div className="relative shrink-0">
+          <div
+            className="w-8 h-8 rounded border border-gray-300"
+            style={{ backgroundColor: originalColorStyle }}
+            title={`RGB(${r}, ${g}, ${b})`}
+          />
+          {isDuplicate && (
+            <div
+              className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center"
+              title="Дублікат: інший колір має таку ж озвучку"
+            >
+              <span className="text-white text-[10px] font-bold">!</span>
+            </div>
+          )}
+        </div>
 
         {/* Bead count */}
         <span className="text-xs text-gray-500 w-16 shrink-0">
@@ -297,6 +310,7 @@ export const ColorMappingPanel: FC<ColorMappingPanelProps> = ({
   onSetTTSMode,
   getColorCount,
   totalBeadCount,
+  duplicateIndices = [],
 }) => {
   if (!isOpen) return null;
 
@@ -355,6 +369,7 @@ export const ColorMappingPanel: FC<ColorMappingPanelProps> = ({
               key={mapping.originalIndex}
               mapping={mapping}
               beadCount={getColorCount(mapping.originalIndex)}
+              isDuplicate={duplicateIndices.includes(mapping.originalIndex)}
               onUpdate={(mappedColorIndex, modifiers) =>
                 onUpdateMapping(mapping.originalIndex, mappedColorIndex, modifiers)
               }
