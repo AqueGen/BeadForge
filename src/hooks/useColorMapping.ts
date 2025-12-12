@@ -41,12 +41,17 @@ function getTTSKey(mapping: ColorMapping, mode: TTSMode): string {
 /**
  * Find indices of colors that have duplicate TTS mappings
  * Returns array of originalIndex values that share the same TTS key with other colors
+ * Note: Colors mapped to skip (SKIP_COLOR_INDEX) are excluded from duplicate detection
  */
 function findDuplicateMappingIndices(mappings: ColorMapping[], mode: TTSMode): number[] {
-  // Group mappings by TTS key
+  // Group mappings by TTS key (excluding skip mappings)
   const keyToIndices = new Map<string, number[]>();
 
   for (const mapping of mappings) {
+    // Skip colors mapped to "пропуск" - they're intentionally not voiced
+    if (mapping.mappedColorIndex === SKIP_COLOR_INDEX) {
+      continue;
+    }
     const key = getTTSKey(mapping, mode);
     const indices = keyToIndices.get(key) || [];
     indices.push(mapping.originalIndex);
@@ -308,7 +313,8 @@ export function useColorMapping(pattern: BeadPattern | null): UseColorMappingRes
     () =>
       mappings.filter(
         (m) =>
-          m.mappedColorIndex < 0 || m.mappedColorIndex >= VOICED_COLORS.length
+          m.mappedColorIndex < 0 ||
+          (m.mappedColorIndex >= VOICED_COLORS.length && m.mappedColorIndex !== SKIP_COLOR_INDEX)
       ).length,
     [mappings]
   );

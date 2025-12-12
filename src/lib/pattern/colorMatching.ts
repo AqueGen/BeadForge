@@ -6,6 +6,7 @@
  */
 
 import type { BeadColor } from '@/types';
+import { SKIP_COLOR_INDEX } from '@/types';
 import type {
   VoicedColor,
   ModifierVoice,
@@ -267,12 +268,12 @@ export function createAutoMappings(colors: BeadColor[]): ColorMapping[] {
 }
 
 /**
- * Check if a mapping has valid voice
+ * Check if a mapping has valid voice (or is skip)
  */
 export function isMappingVoiced(mapping: ColorMapping): boolean {
   return (
-    mapping.mappedColorIndex >= 0 &&
-    mapping.mappedColorIndex < VOICED_COLORS.length
+    mapping.mappedColorIndex === SKIP_COLOR_INDEX ||
+    (mapping.mappedColorIndex >= 0 && mapping.mappedColorIndex < VOICED_COLORS.length)
   );
 }
 

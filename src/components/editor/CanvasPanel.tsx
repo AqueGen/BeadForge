@@ -118,7 +118,7 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
       }
       // Draw highlights for TTS (with brick offset)
       if (highlightedBeads && highlightedBeads.positions.length > 0) {
-        renderHighlights(ctx, highlightedBeads, pattern.height, zoom, brickOffset);
+        renderHighlights(ctx, highlightedBeads, pattern.height, zoom, brickOffset, pattern.width);
       }
     } else {
       renderSimulation(ctx, pattern, zoom, shift, brickOffset);
@@ -140,17 +140,22 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
       // Calculate y first (same for both views)
       const y = pattern.height - 1 - Math.floor(pixelY / zoom);
 
-      // For corrected view, account for brick offset on odd rows
-      let adjustedPixelX = pixelX;
+      // For corrected view, account for cumulative brick offset
+      let x: number;
       if (viewType === 'corrected' && y >= 0 && y < pattern.height) {
-        // Base offset to keep all beads visible when brickOffset is negative
-        const baseOffset = brickOffset < 0 ? Math.abs(brickOffset) * zoom : 0;
-        // Odd rows are shifted by brickOffset
-        const dx = y % 2 === 1 ? zoom * brickOffset : 0;
-        adjustedPixelX = pixelX - baseOffset - dx;
-      }
+        // Cumulative offset for this row
+        const rowOffset = y * brickOffset;
+        const intOffset = Math.floor(rowOffset);
+        const fracOffset = rowOffset - intOffset;
+        const dx = fracOffset * zoom;
 
-      const x = Math.floor(adjustedPixelX / zoom);
+        // Reverse the transformation: screen position to pattern position
+        const visualX = Math.floor((pixelX - dx) / zoom);
+        // Convert visual X back to pattern X (reverse the wrapping)
+        x = ((visualX - intOffset) % pattern.width + pattern.width) % pattern.width;
+      } else {
+        x = Math.floor(pixelX / zoom);
+      }
 
       if (x < 0 || x >= pattern.width || y < 0 || y >= pattern.height) {
         return null;
@@ -349,15 +354,27 @@ function renderCorrected(
   zoom: number,
   brickOffset: number
 ) {
-  // Base offset to keep all beads visible when brickOffset is negative
-  const baseOffset = brickOffset < 0 ? Math.abs(brickOffset) * zoom : 0;
+  // Cumulative offset: each row shifts by y * brickOffset
+  // When offset >= 1, cells wrap around (cylinder effect)
 
   for (let y = 0; y < pattern.height; y++) {
-    const dx = y % 2 === 1 ? zoom * brickOffset : 0;
+    // Total cumulative offset for this row
+    const rowOffset = y * brickOffset;
+    // Integer part: how many full cells to shift (for wrapping)
+    const intOffset = Math.floor(rowOffset);
+    // Fractional part: sub-cell visual offset in pixels
+    const fracOffset = rowOffset - intOffset;
+    // Pixel offset for fractional part
+    const dx = fracOffset * zoom;
 
-    for (let x = 0; x < pattern.width; x++) {
-      const colorIndex = pattern.field[y * pattern.width + x];
-      const screenX = x * zoom + baseOffset + dx;
+    for (let visualX = 0; visualX < pattern.width; visualX++) {
+      // Calculate which pattern column corresponds to this visual position
+      // If row is shifted right by intOffset, visual position X shows pattern column (X - intOffset)
+      const patternX = ((visualX - intOffset) % pattern.width + pattern.width) % pattern.width;
+      const colorIndex = pattern.field[y * pattern.width + patternX];
+
+      // Screen position includes fractional offset
+      const screenX = visualX * zoom + dx;
       const screenY = (pattern.height - 1 - y) * zoom;
 
       // Handle skip cells
@@ -380,12 +397,13 @@ function renderSimulation(
   brickOffset: number
 ) {
   const visibleWidth = Math.ceil(pattern.width / 2);
-  // Base offset to keep all beads visible when brickOffset is negative
-  const baseOffset = brickOffset < 0 ? Math.abs(brickOffset) * zoom : 0;
 
   for (let y = 0; y < pattern.height; y++) {
-    // Brick offset based on row, same as corrected view
-    const dx = y % 2 === 1 ? zoom * brickOffset : 0;
+    // Cumulative brick offset, same as corrected view
+    const rowOffset = y * brickOffset;
+    const intOffset = Math.floor(rowOffset);
+    const fracOffset = rowOffset - intOffset;
+    const dx = fracOffset * zoom;
 
     for (let x = 0; x < pattern.width; x++) {
       // Apply shift as horizontal rotation (wrapping around the tube)
@@ -394,8 +412,10 @@ function renderSimulation(
       // Only show beads on the visible half of the tube
       if (shiftedX >= visibleWidth) continue;
 
-      const colorIndex = pattern.field[y * pattern.width + x];
-      const screenX = shiftedX * zoom + baseOffset + dx;
+      // Apply brick offset wrapping
+      const patternX = ((x - intOffset) % pattern.width + pattern.width) % pattern.width;
+      const colorIndex = pattern.field[y * pattern.width + patternX];
+      const screenX = shiftedX * zoom + dx;
       const screenY = (pattern.height - 1 - y) * zoom;
 
       // Handle skip cells
@@ -415,18 +435,26 @@ function renderHighlights(
   highlightedBeads: HighlightedBeads,
   patternHeight: number,
   zoom: number,
-  brickOffset: number = 0
+  brickOffset: number = 0,
+  patternWidth: number = 0
 ) {
-  // Base offset to keep all beads visible when brickOffset is negative
-  const baseOffset = brickOffset < 0 ? Math.abs(brickOffset) * zoom : 0;
-
   ctx.strokeStyle = '#ff0000';
   ctx.lineWidth = 3;
 
   for (const pos of highlightedBeads.positions) {
-    // Apply brick offset on odd rows (for corrected view)
-    const dx = pos.y % 2 === 1 ? zoom * brickOffset : 0;
-    const screenX = pos.x * zoom + baseOffset + dx;
+    // Cumulative brick offset for this row
+    const rowOffset = pos.y * brickOffset;
+    const intOffset = Math.floor(rowOffset);
+    const fracOffset = rowOffset - intOffset;
+    const dx = fracOffset * zoom;
+
+    // Calculate visual X position with wrapping
+    let visualX = pos.x;
+    if (patternWidth > 0) {
+      visualX = ((pos.x + intOffset) % patternWidth + patternWidth) % patternWidth;
+    }
+
+    const screenX = visualX * zoom + dx;
     const screenY = (patternHeight - 1 - pos.y) * zoom;
 
     // Draw highlight border
@@ -436,9 +464,19 @@ function renderHighlights(
   // Draw a filled semi-transparent overlay for better visibility
   ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
   for (const pos of highlightedBeads.positions) {
-    // Apply brick offset on odd rows (for corrected view)
-    const dx = pos.y % 2 === 1 ? zoom * brickOffset : 0;
-    const screenX = pos.x * zoom + baseOffset + dx;
+    // Cumulative brick offset for this row
+    const rowOffset = pos.y * brickOffset;
+    const intOffset = Math.floor(rowOffset);
+    const fracOffset = rowOffset - intOffset;
+    const dx = fracOffset * zoom;
+
+    // Calculate visual X position with wrapping
+    let visualX = pos.x;
+    if (patternWidth > 0) {
+      visualX = ((pos.x + intOffset) % patternWidth + patternWidth) % patternWidth;
+    }
+
+    const screenX = visualX * zoom + dx;
     const screenY = (patternHeight - 1 - pos.y) * zoom;
     ctx.fillRect(screenX, screenY, zoom - 1, zoom - 1);
   }
@@ -460,19 +498,23 @@ function renderCompletedOverlay(
   const usedHeight = getUsedHeight(pattern);
   if (usedHeight === 0) return;
 
-  // Base offset to keep all beads visible when brickOffset is negative
-  const baseOffset = brickOffset < 0 ? Math.abs(brickOffset) * zoom : 0;
-
   ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';  // Semi-transparent dark overlay
 
   for (let pos = 1; pos <= completedBeads; pos++) {
     const coord = positionToCoordinates(pos, pattern, usedHeight);
     if (!coord) continue;
 
-    // Apply brick offset on odd rows (for corrected view)
-    const dx = coord.y % 2 === 1 ? zoom * brickOffset : 0;
+    // Cumulative brick offset for this row
+    const rowOffset = coord.y * brickOffset;
+    const intOffset = Math.floor(rowOffset);
+    const fracOffset = rowOffset - intOffset;
+    const dx = fracOffset * zoom;
+
+    // Calculate visual X position with wrapping
+    const visualX = ((coord.x + intOffset) % pattern.width + pattern.width) % pattern.width;
+
     // Convert to screen coordinates (y=0 is visual bottom)
-    const screenX = coord.x * zoom + baseOffset + dx;
+    const screenX = visualX * zoom + dx;
     const screenY = (pattern.height - 1 - coord.y) * zoom;
 
     ctx.fillRect(screenX, screenY, zoom - 1, zoom - 1);

@@ -413,7 +413,7 @@ export class TTSController {
   }
 
   /**
-   * Go to next item
+   * Go to next item (skipping over items mapped to skip)
    */
   next(): void {
     const maxIndex =
@@ -421,16 +421,24 @@ export class TTSController {
 
     if (this.currentIndex < maxIndex - 1) {
       this.currentIndex++;
+      // Skip over items mapped to skip
+      while (this.currentIndex < maxIndex - 1 && this.isCurrentMappedToSkip()) {
+        this.currentIndex++;
+      }
       this.speakCurrent();
     }
   }
 
   /**
-   * Go to previous item
+   * Go to previous item (skipping over items mapped to skip)
    */
   previous(): void {
     if (this.currentIndex > 0) {
       this.currentIndex--;
+      // Skip over items mapped to skip
+      while (this.currentIndex > 0 && this.isCurrentMappedToSkip()) {
+        this.currentIndex--;
+      }
       this.speakCurrent();
     }
   }
@@ -630,11 +638,27 @@ export class TTSController {
   }
 
   /**
+   * Check if current item is mapped to skip
+   */
+  private isCurrentMappedToSkip(): boolean {
+    const mapping = this.getCurrentMapping();
+    return mapping !== undefined && mapping.mappedColorIndex === SKIP_COLOR_INDEX;
+  }
+
+  /**
    * Speak single item (for manual mode)
    */
   speakCurrent(): void {
     window.speechSynthesis.cancel();
     stopPrerecordedAudio();
+
+    // Check if current color is mapped to skip - don't voice it
+    if (this.isCurrentMappedToSkip()) {
+      const position = this.getCurrentPosition();
+      const groupCount = this.getCurrentGroupCount();
+      this.onPositionChange?.(position, 'пропуск', groupCount);
+      return;
+    }
 
     const text = this.getCurrentText();
     if (!text) return;
@@ -733,6 +757,14 @@ export class TTSController {
       this.isPlaying = false;
       this.onStateChange?.(false, false);
       this.onComplete?.();
+      return;
+    }
+
+    // Check if current color is mapped to skip - move to next without voicing
+    if (this.isCurrentMappedToSkip()) {
+      this.currentIndex++;
+      // Continue to next item immediately (no pause since nothing was voiced)
+      this.speakNext();
       return;
     }
 

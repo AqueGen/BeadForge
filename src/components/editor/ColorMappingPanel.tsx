@@ -9,6 +9,7 @@ import { FC, useState, useMemo } from 'react';
 import type { ColorMapping, ColorModifiers, TTSMode } from '@/types/colorMapping';
 import { VOICED_COLORS, MODIFIER_VOICES, getVoicedColor } from '@/lib/pattern';
 import { getActiveModifierKeys } from '@/types/colorMapping';
+import { SKIP_COLOR_INDEX } from '@/types';
 
 interface ColorMappingPanelProps {
   /** Whether the panel is open */
@@ -46,12 +47,34 @@ const ColorMappingRow: FC<{
   isDuplicate: boolean;
   onUpdate: (mappedColorIndex: number, modifiers: ColorModifiers) => void;
   onReset: () => void;
+  /** Previous mapped color index before skip was enabled (for restoring) */
+  previousMappedIndex?: number;
 }> = ({ mapping, beadCount, isDuplicate, onUpdate, onReset }) => {
   const [expanded, setExpanded] = useState(false);
+  // Store previous color index when toggling skip
+  const [prevColorIndex, setPrevColorIndex] = useState<number>(
+    mapping.mappedColorIndex !== SKIP_COLOR_INDEX ? mapping.mappedColorIndex : 0
+  );
   const voicedColor = getVoicedColor(mapping.mappedColorIndex);
+  const isSkip = mapping.mappedColorIndex === SKIP_COLOR_INDEX;
 
   const handleColorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    onUpdate(parseInt(e.target.value, 10), mapping.modifiers);
+    const newIndex = parseInt(e.target.value, 10);
+    setPrevColorIndex(newIndex);
+    onUpdate(newIndex, mapping.modifiers);
+  };
+
+  const handleSkipToggle = (checked: boolean) => {
+    if (checked) {
+      // Save current color before switching to skip
+      if (mapping.mappedColorIndex !== SKIP_COLOR_INDEX) {
+        setPrevColorIndex(mapping.mappedColorIndex);
+      }
+      onUpdate(SKIP_COLOR_INDEX, mapping.modifiers);
+    } else {
+      // Restore previous color
+      onUpdate(prevColorIndex, mapping.modifiers);
+    }
   };
 
   const handleModifierChange = (
@@ -64,6 +87,7 @@ const ColorMappingRow: FC<{
 
   // Generate voice preview text
   const voicePreview = useMemo(() => {
+    if (isSkip) return 'пропуск';
     if (!voicedColor) return '—';
     const parts = [voicedColor.nameUk];
     const modifierKeys = getActiveModifierKeys(mapping.modifiers);
@@ -72,19 +96,19 @@ const ColorMappingRow: FC<{
       if (mod) parts.push(mod.nameUk);
     });
     return parts.join(' ');
-  }, [voicedColor, mapping.modifiers]);
+  }, [voicedColor, mapping.modifiers, isSkip]);
 
   const { r, g, b } = mapping.originalColor;
   const originalColorStyle = `rgb(${r}, ${g}, ${b})`;
 
   return (
-    <div className={`border rounded-lg p-3 bg-white ${isDuplicate ? 'border-orange-400 border-2' : ''}`}>
+    <div className={`border rounded-lg p-3 bg-white ${isDuplicate ? 'border-orange-400 border-2' : ''} ${isSkip ? 'bg-gray-50' : ''}`}>
       {/* Main row */}
       <div className="flex items-center gap-3">
         {/* Original color swatch with duplicate warning */}
         <div className="relative shrink-0">
           <div
-            className="w-8 h-8 rounded border border-gray-300"
+            className={`w-8 h-8 rounded border border-gray-300 ${isSkip ? 'opacity-50' : ''}`}
             style={{ backgroundColor: originalColorStyle }}
             title={`RGB(${r}, ${g}, ${b})`}
           />
@@ -99,48 +123,72 @@ const ColorMappingRow: FC<{
         </div>
 
         {/* Bead count */}
-        <span className="text-xs text-gray-500 w-16 shrink-0">
+        <span className={`text-xs w-12 shrink-0 ${isSkip ? 'text-gray-400' : 'text-gray-500'}`}>
           {beadCount} шт
         </span>
 
-        {/* Arrow */}
-        <span className="text-gray-400">→</span>
+        {/* Skip checkbox */}
+        <label className="flex items-center gap-1.5 shrink-0 cursor-pointer" title="Пропустити при озвучуванні">
+          <input
+            type="checkbox"
+            checked={isSkip}
+            onChange={(e) => handleSkipToggle(e.target.checked)}
+            className="w-4 h-4 accent-orange-500"
+          />
+          <span className={`text-xs ${isSkip ? 'text-orange-600 font-medium' : 'text-gray-500'}`}>
+            Пропуск
+          </span>
+        </label>
 
-        {/* Voiced color select */}
-        <select
-          value={mapping.mappedColorIndex}
-          onChange={handleColorChange}
-          className="flex-1 px-2 py-1.5 border rounded text-sm min-w-0"
-        >
-          {VOICED_COLORS.map((vc) => (
-            <option key={vc.index} value={vc.index}>
-              {vc.nameUk}
-            </option>
-          ))}
-        </select>
+        {/* Arrow - only when not skip */}
+        {!isSkip && <span className="text-gray-400">→</span>}
+
+        {/* Voiced color select - hidden when skip */}
+        {!isSkip && (
+          <select
+            value={mapping.mappedColorIndex}
+            onChange={handleColorChange}
+            className="flex-1 px-2 py-1.5 border rounded text-sm min-w-0"
+          >
+            {VOICED_COLORS.map((vc) => (
+              <option key={vc.index} value={vc.index}>
+                {vc.nameUk}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {/* Skip indicator text */}
+        {isSkip && (
+          <span className="flex-1 text-sm text-gray-400 italic">
+            не озвучується
+          </span>
+        )}
 
         {/* Auto indicator */}
-        {mapping.isAutoMapped && (
+        {mapping.isAutoMapped && !isSkip && (
           <span className="text-xs text-gray-400" title="Автоматичний маппінг">
             auto
           </span>
         )}
 
-        {/* Expand button */}
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="p-1.5 text-gray-500 hover:bg-gray-100 rounded"
-          title={expanded ? 'Згорнути' : 'Модифікатори'}
-        >
-          <svg
-            className={`w-4 h-4 transition-transform ${expanded ? 'rotate-180' : ''}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        {/* Expand button - hidden for skip */}
+        {!isSkip && (
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="p-1.5 text-gray-500 hover:bg-gray-100 rounded"
+            title={expanded ? 'Згорнути' : 'Модифікатори'}
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
+            <svg
+              className={`w-4 h-4 transition-transform ${expanded ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        )}
 
         {/* Reset button */}
         {!mapping.isAutoMapped && (
@@ -156,8 +204,8 @@ const ColorMappingRow: FC<{
         )}
       </div>
 
-      {/* Expanded modifiers */}
-      {expanded && (
+      {/* Expanded modifiers - not shown for skip */}
+      {expanded && !isSkip && (
         <div className="mt-3 pt-3 border-t space-y-2">
           {/* Brightness */}
           <div className="flex items-center gap-2 text-sm">
