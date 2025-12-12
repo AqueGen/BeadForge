@@ -236,8 +236,8 @@ export default function RopeEditorPage() {
         onSaveJBB={() => actions.saveJBB()}
         onLoadJBB={actions.loadJBB}
         showColorMapping={true}
-        colorMappingHasWarning={colorMapping.mappings.some(m => !m.isAutoMapped) || colorMapping.mappings.length === 0}
-        colorMappingWarningCount={colorMapping.mappings.filter(m => !m.isAutoMapped).length}
+        colorMappingHasWarning={colorMapping.hasDuplicateMappings}
+        colorMappingWarningCount={colorMapping.duplicateMappingCount}
         onColorMappingClick={() => setShowColorMappingPanel(true)}
       />
 

@@ -21,6 +21,50 @@ import {
 import { SKIP_COLOR_INDEX } from '@/types';
 
 // ============================================================
+// Helper Functions
+// ============================================================
+
+/**
+ * Generate a unique key for TTS comparison based on mode
+ * - colorOnly: only mappedColorIndex matters
+ * - full: mappedColorIndex + all modifiers
+ */
+function getTTSKey(mapping: ColorMapping, mode: TTSMode): string {
+  if (mode === 'colorOnly') {
+    return `${mapping.mappedColorIndex}`;
+  }
+  // full mode: include all modifiers
+  const { brightness, transparency, finish, saturation } = mapping.modifiers;
+  return `${mapping.mappedColorIndex}|${brightness || ''}|${transparency || ''}|${finish || ''}|${saturation || ''}`;
+}
+
+/**
+ * Find indices of colors that have duplicate TTS mappings
+ * Returns array of originalIndex values that share the same TTS key with other colors
+ */
+function findDuplicateMappingIndices(mappings: ColorMapping[], mode: TTSMode): number[] {
+  // Group mappings by TTS key
+  const keyToIndices = new Map<string, number[]>();
+
+  for (const mapping of mappings) {
+    const key = getTTSKey(mapping, mode);
+    const indices = keyToIndices.get(key) || [];
+    indices.push(mapping.originalIndex);
+    keyToIndices.set(key, indices);
+  }
+
+  // Find all indices that share a key with at least one other color
+  const duplicateIndices: number[] = [];
+  keyToIndices.forEach((indices) => {
+    if (indices.length > 1) {
+      duplicateIndices.push(...indices);
+    }
+  });
+
+  return duplicateIndices;
+}
+
+// ============================================================
 // localStorage Keys
 // ============================================================
 
@@ -79,6 +123,10 @@ export interface UseColorMappingResult {
   unmappedCount: number;
   /** Total bead count (excluding skip color) */
   totalBeadCount: number;
+  /** Whether there are duplicate TTS mappings (different colors with same voice) */
+  hasDuplicateMappings: boolean;
+  /** Number of colors involved in duplicate mappings */
+  duplicateMappingCount: number;
   /** Update mapping for a specific color */
   updateMapping: (
     originalIndex: number,
@@ -271,6 +319,15 @@ export function useColorMapping(pattern: BeadPattern | null): UseColorMappingRes
     return total;
   }, [colorCounts]);
 
+  // Duplicate mapping detection
+  const duplicateMappingIndices = useMemo(
+    () => findDuplicateMappingIndices(mappings, ttsMode),
+    [mappings, ttsMode]
+  );
+
+  const hasDuplicateMappings = duplicateMappingIndices.length > 0;
+  const duplicateMappingCount = duplicateMappingIndices.length;
+
   return {
     mappings,
     ttsMode,
@@ -278,6 +335,8 @@ export function useColorMapping(pattern: BeadPattern | null): UseColorMappingRes
     hasCustomMappings,
     unmappedCount,
     totalBeadCount,
+    hasDuplicateMappings,
+    duplicateMappingCount,
     updateMapping,
     resetToAuto,
     resetAllToAuto,
