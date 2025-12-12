@@ -9,7 +9,7 @@ import { BallPatternCanvas } from '@/components/editor/BallPatternCanvas';
 import { BallWrappedView } from '@/components/editor/BallWrappedView';
 import { BallTTSPanel } from '@/components/tts/BallTTSPanel';
 import { useBallPattern } from '@/hooks/useBallPattern';
-import { DEFAULT_COLORS, BALL_SIZE_CONFIGS, type DrawingTool, type HighlightedBeads } from '@/types';
+import { DEFAULT_COLORS, BALL_SIZE_CONFIGS, SKIP_COLOR_INDEX, type DrawingTool, type HighlightedBeads } from '@/types';
 import { isPositionInWedge, getHighlightedBeadsForBall } from '@/lib/pattern/ballPattern';
 
 // Offset values for bead crochet row stagger (like CrochetBeadPaint)
@@ -259,6 +259,21 @@ export default function BallEditorPage() {
           <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
             Цвета
           </h3>
+          {/* Skip button */}
+          <button
+            onClick={() => setSelectedColor(SKIP_COLOR_INDEX)}
+            className={`mb-2 w-full flex items-center justify-center gap-2 rounded border-2 px-2 py-1.5 text-xs transition-colors ${
+              selectedColor === SKIP_COLOR_INDEX
+                ? 'border-primary-500 bg-gray-100'
+                : 'border-gray-300 bg-white hover:bg-gray-50'
+            }`}
+            title="Пропуск (не озвучивается)"
+          >
+            <span className="flex h-5 w-5 items-center justify-center rounded-full border border-gray-400 text-gray-500 text-[10px] font-bold">
+              ✕
+            </span>
+            <span>Пропуск</span>
+          </button>
           <ColorPalette
             colors={DEFAULT_COLORS}
             selectedColor={selectedColor}
@@ -326,7 +341,7 @@ export default function BallEditorPage() {
                 </p>
                 <p className="text-xs text-gray-600">Инструмент: {tool}</p>
                 <p className="text-xs text-gray-600">
-                  Цвет: {DEFAULT_COLORS[selectedColor]?.name || `#${selectedColor}`}
+                  Цвет: {selectedColor === SKIP_COLOR_INDEX ? 'Пропуск' : (DEFAULT_COLORS[selectedColor]?.name || `#${selectedColor}`)}
                 </p>
               </>
             ) : (

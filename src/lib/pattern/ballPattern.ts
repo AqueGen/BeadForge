@@ -24,7 +24,7 @@ import type {
   BeadColor,
   BallPatternDto
 } from '@/types';
-import { BALL_SIZE_CONFIGS, getBallSizeConfig, DEFAULT_COLORS } from '@/types';
+import { BALL_SIZE_CONFIGS, getBallSizeConfig, DEFAULT_COLORS, SKIP_COLOR_INDEX } from '@/types';
 
 /**
  * Create a new empty ball pattern with given diameter
@@ -311,6 +311,7 @@ export function generateBallBeadListForTTS(pattern: BallPattern): { colorIndex: 
  * Get highlighted beads for TTS visualization on ball pattern
  * Returns array of coordinates for the beads in the current group
  * More efficient than inline calculation - uses early exit
+ * Properly handles skip cells (SKIP_COLOR_INDEX) - they are not counted
  */
 export function getHighlightedBeadsForBall(
   pattern: BallPattern,
@@ -330,12 +331,19 @@ export function getHighlightedBeadsForBall(
   for (let y = 0; y < pattern.height; y++) {
     for (let x = 0; x < pattern.width; x++) {
       if (isPositionInWedge(pattern, x, y)) {
+        const cellColorIndex = pattern.field[y * pattern.width + x];
+
+        // Skip cells with SKIP_COLOR_INDEX - they are not counted in TTS positions
+        if (cellColorIndex === SKIP_COLOR_INDEX) {
+          continue;
+        }
+
         beadCount++;
         if (beadCount >= startPosition && beadCount < endPosition) {
           positions.push({ x, y });
           // Get color index from first valid position
           if (positions.length === 1) {
-            colorIndex = pattern.field[y * pattern.width + x];
+            colorIndex = cellColorIndex;
           }
         }
         // Early exit when we've found all needed positions

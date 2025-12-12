@@ -2,6 +2,7 @@
 
 import { FC, useRef, useEffect, useState, useCallback } from 'react';
 import type { BallPattern, HighlightedBeads } from '@/types';
+import { SKIP_COLOR_INDEX } from '@/types';
 import { colorToRgba } from '@/lib/utils';
 import { isPositionInWedge } from '@/lib/pattern/ballPattern';
 
@@ -151,6 +152,38 @@ export const BallPatternCanvas: FC<BallPatternCanvasProps> = ({
 };
 
 /**
+ * Helper function to draw a skip cell (empty circle with X)
+ */
+function renderSkipCell(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  size: number
+) {
+  const centerX = x + size / 2;
+  const centerY = y + size / 2;
+  const radius = (size - 2) / 2;
+
+  // Draw empty circle
+  ctx.strokeStyle = '#999';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Draw X inside
+  const xPadding = size * 0.25;
+  ctx.strokeStyle = '#999';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x + xPadding, y + xPadding);
+  ctx.lineTo(x + size - xPadding, y + size - xPadding);
+  ctx.moveTo(x + size - xPadding, y + xPadding);
+  ctx.lineTo(x + xPadding, y + size - xPadding);
+  ctx.stroke();
+}
+
+/**
  * Render the ball pattern - only cells inside wedges are rendered
  * Cells outside wedges (empty triangular gaps) are not displayed
  */
@@ -169,15 +202,20 @@ function renderBallPattern(
       }
 
       const colorIndex = field[y * width + x];
-      const color = colors[colorIndex] || colors[0];
-      const rgba = colorToRgba(color);
 
       // Convert grid coords to canvas coords (y=0 at bottom → canvas y at bottom)
       const canvasX = x * zoom;
       const canvasY = (height - 1 - y) * zoom;
 
-      ctx.fillStyle = rgba;
-      ctx.fillRect(canvasX, canvasY, zoom - 1, zoom - 1);
+      // Handle skip cells
+      if (colorIndex === SKIP_COLOR_INDEX) {
+        renderSkipCell(ctx, canvasX, canvasY, zoom - 1);
+      } else {
+        const color = colors[colorIndex] || colors[0];
+        const rgba = colorToRgba(color);
+        ctx.fillStyle = rgba;
+        ctx.fillRect(canvasX, canvasY, zoom - 1, zoom - 1);
+      }
     }
   }
 }

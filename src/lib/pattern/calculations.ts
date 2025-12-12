@@ -1,4 +1,5 @@
 import type { BeadPattern, Point, BeadRun, PatternStats, HighlightedBeads } from '@/types';
+import { SKIP_COLOR_INDEX } from '@/types';
 import { getUsedHeight } from './pattern';
 
 /**
@@ -156,31 +157,46 @@ export function getPatternStats(pattern: BeadPattern): PatternStats {
  * Convert TTS reading position (1-based) to grid coordinates (x, y)
  * Reading order: bottom-to-top (y=0 first), left-to-right (x=0 first)
  * This matches the order used in generateBeadListForTTS in ttsService.ts
+ * Skips cells with SKIP_COLOR_INDEX (they are not counted in TTS positions)
  */
 export function positionToCoordinates(
   position: number,
-  width: number,
+  pattern: BeadPattern,
   usedHeight: number
 ): Point | null {
-  if (position < 1 || position > width * usedHeight) {
+  if (position < 1) {
     return null;
   }
 
-  const zeroBasedPos = position - 1;
-  const row = Math.floor(zeroBasedPos / width);  // 0-based row from bottom
-  const col = zeroBasedPos % width;              // 0-based col from left
+  // Iterate through pattern in TTS reading order, counting non-skip cells
+  let currentPosition = 0;
 
-  // Convert to grid coordinates (direct mapping)
-  const y = row;   // y=0 is bottom, first in reading
-  const x = col;   // x=0 is left, first in reading
+  for (let y = 0; y < usedHeight; y++) {
+    for (let x = 0; x < pattern.width; x++) {
+      const colorIndex = pattern.field[y * pattern.width + x];
 
-  return { x, y };
+      // Skip cells with SKIP_COLOR_INDEX
+      if (colorIndex === SKIP_COLOR_INDEX) {
+        continue;
+      }
+
+      currentPosition++;
+
+      if (currentPosition === position) {
+        return { x, y };
+      }
+    }
+  }
+
+  // Position out of range
+  return null;
 }
 
 /**
  * Convert coordinates (x, y) to TTS reading position (1-based)
  * Inverse of positionToCoordinates
  * Reading order: bottom-to-top (y=0 first), left-to-right (x=0 first)
+ * Skips cells with SKIP_COLOR_INDEX (they are not counted in TTS positions)
  */
 export function coordinatesToPosition(
   pattern: BeadPattern,
@@ -193,17 +209,40 @@ export function coordinatesToPosition(
     return null;
   }
 
-  // Convert grid coordinates to reading order (direct mapping)
-  const row = y;  // row 0 = bottom (y=0)
-  const col = x;  // col 0 = left (x=0)
+  // Check if the target cell itself is a skip cell
+  const targetColorIndex = pattern.field[y * pattern.width + x];
+  if (targetColorIndex === SKIP_COLOR_INDEX) {
+    return null; // Skip cells don't have TTS positions
+  }
 
-  // Position = row * width + col + 1 (1-based)
-  return row * pattern.width + col + 1;
+  // Count non-skip cells up to and including (x, y)
+  let position = 0;
+
+  for (let row = 0; row < usedHeight; row++) {
+    for (let col = 0; col < pattern.width; col++) {
+      const colorIndex = pattern.field[row * pattern.width + col];
+
+      // Skip cells with SKIP_COLOR_INDEX
+      if (colorIndex === SKIP_COLOR_INDEX) {
+        continue;
+      }
+
+      position++;
+
+      // Found the target cell
+      if (row === y && col === x) {
+        return position;
+      }
+    }
+  }
+
+  return null;
 }
 
 /**
  * Get highlighted beads for TTS visualization
  * Returns array of coordinates for the beads in the current group
+ * Properly handles skip cells (SKIP_COLOR_INDEX)
  */
 export function getHighlightedBeads(
   pattern: BeadPattern,
@@ -220,7 +259,7 @@ export function getHighlightedBeads(
 
   for (let i = 0; i < count; i++) {
     const pos = startPosition + i;
-    const coord = positionToCoordinates(pos, pattern.width, usedHeight);
+    const coord = positionToCoordinates(pos, pattern, usedHeight);
     if (coord) {
       positions.push(coord);
       // Get color index from first valid position

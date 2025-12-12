@@ -2,6 +2,7 @@
 
 import { FC, useRef, useEffect } from 'react';
 import type { BallPattern, HighlightedBeads } from '@/types';
+import { SKIP_COLOR_INDEX } from '@/types';
 import { colorToRgba } from '@/lib/utils';
 import { isPositionInWedge } from '@/lib/pattern/ballPattern';
 
@@ -116,23 +117,45 @@ function renderWrappedPattern(
       }
 
       const colorIndex = field[y * width + actualX];
-      const color = colors[colorIndex] || colors[0];
-      const rgba = colorToRgba(color);
 
       // Convert grid coords to canvas center coords for circles
       const centerX = displayX * zoom + zoom / 2;
       const centerY = (height - 1 - y) * zoom + zoom / 2;
 
-      // Draw round bead
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, beadRadius, 0, Math.PI * 2);
-      ctx.fillStyle = rgba;
-      ctx.fill();
+      // Handle skip cells - draw empty circle with X
+      if (colorIndex === SKIP_COLOR_INDEX) {
+        // Draw empty circle
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, beadRadius, 0, Math.PI * 2);
+        ctx.strokeStyle = '#666';
+        ctx.lineWidth = 1;
+        ctx.stroke();
 
-      // Add subtle border for definition
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
-      ctx.lineWidth = 0.5;
-      ctx.stroke();
+        // Draw X inside
+        const xSize = beadRadius * 0.6;
+        ctx.beginPath();
+        ctx.moveTo(centerX - xSize, centerY - xSize);
+        ctx.lineTo(centerX + xSize, centerY + xSize);
+        ctx.moveTo(centerX + xSize, centerY - xSize);
+        ctx.lineTo(centerX - xSize, centerY + xSize);
+        ctx.strokeStyle = '#666';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      } else {
+        const color = colors[colorIndex] || colors[0];
+        const rgba = colorToRgba(color);
+
+        // Draw round bead
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, beadRadius, 0, Math.PI * 2);
+        ctx.fillStyle = rgba;
+        ctx.fill();
+
+        // Add subtle border for definition
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      }
     }
   }
 

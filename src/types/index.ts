@@ -182,6 +182,17 @@ export interface ViewConfig {
 }
 
 // ============================================================
+// Special Color Constants
+// ============================================================
+
+/**
+ * Special color index for "skip" cells
+ * Skip cells are not announced by TTS and render as empty circle with X
+ * Used for pattern boundaries and empty spaces
+ */
+export const SKIP_COLOR_INDEX = 255;
+
+// ============================================================
 // Default Values
 // ============================================================
 

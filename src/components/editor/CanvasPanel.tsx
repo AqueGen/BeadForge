@@ -2,6 +2,7 @@
 
 import { FC, useRef, useEffect, useState, useCallback } from 'react';
 import type { BeadPattern, ViewType, HighlightedBeads } from '@/types';
+import { SKIP_COLOR_INDEX } from '@/types';
 import { colorToRgba } from '@/lib/utils';
 import { positionToCoordinates, getUsedHeight } from '@/lib/pattern';
 
@@ -229,6 +230,36 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
   );
 };
 
+// Helper function to draw a skip cell (empty circle with X)
+function renderSkipCell(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  size: number
+) {
+  const centerX = x + size / 2;
+  const centerY = y + size / 2;
+  const radius = (size - 2) / 2;
+
+  // Draw empty circle
+  ctx.strokeStyle = '#999';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Draw X inside
+  const xPadding = size * 0.25;
+  ctx.strokeStyle = '#999';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x + xPadding, y + xPadding);
+  ctx.lineTo(x + size - xPadding, y + size - xPadding);
+  ctx.moveTo(x + size - xPadding, y + xPadding);
+  ctx.lineTo(x + xPadding, y + size - xPadding);
+  ctx.stroke();
+}
+
 // Render functions
 function renderDraft(
   ctx: CanvasRenderingContext2D,
@@ -238,15 +269,17 @@ function renderDraft(
   for (let y = 0; y < pattern.height; y++) {
     for (let x = 0; x < pattern.width; x++) {
       const colorIndex = pattern.field[y * pattern.width + x];
-      const color = pattern.colors[colorIndex] || pattern.colors[0];
+      const screenX = x * zoom;
+      const screenY = (pattern.height - 1 - y) * zoom;
 
-      ctx.fillStyle = colorToRgba(color);
-      ctx.fillRect(
-        x * zoom,
-        (pattern.height - 1 - y) * zoom,
-        zoom - 1,
-        zoom - 1
-      );
+      // Handle skip cells
+      if (colorIndex === SKIP_COLOR_INDEX) {
+        renderSkipCell(ctx, screenX, screenY, zoom - 1);
+      } else {
+        const color = pattern.colors[colorIndex] || pattern.colors[0];
+        ctx.fillStyle = colorToRgba(color);
+        ctx.fillRect(screenX, screenY, zoom - 1, zoom - 1);
+      }
     }
   }
 
@@ -281,15 +314,17 @@ function renderCorrected(
 
     for (let x = 0; x < pattern.width; x++) {
       const colorIndex = pattern.field[y * pattern.width + x];
-      const color = pattern.colors[colorIndex] || pattern.colors[0];
+      const screenX = x * zoom + dx;
+      const screenY = (pattern.height - 1 - y) * zoom;
 
-      ctx.fillStyle = colorToRgba(color);
-      ctx.fillRect(
-        x * zoom + dx,
-        (pattern.height - 1 - y) * zoom,
-        zoom - 1,
-        zoom - 1
-      );
+      // Handle skip cells
+      if (colorIndex === SKIP_COLOR_INDEX) {
+        renderSkipCell(ctx, screenX, screenY, zoom - 1);
+      } else {
+        const color = pattern.colors[colorIndex] || pattern.colors[0];
+        ctx.fillStyle = colorToRgba(color);
+        ctx.fillRect(screenX, screenY, zoom - 1, zoom - 1);
+      }
     }
   }
 }
@@ -314,15 +349,17 @@ function renderSimulation(
       if (shiftedX >= visibleWidth) continue;
 
       const colorIndex = pattern.field[y * pattern.width + x];
-      const color = pattern.colors[colorIndex] || pattern.colors[0];
+      const screenX = shiftedX * zoom + dx;
+      const screenY = (pattern.height - 1 - y) * zoom;
 
-      ctx.fillStyle = colorToRgba(color);
-      ctx.fillRect(
-        shiftedX * zoom + dx,
-        (pattern.height - 1 - y) * zoom,
-        zoom - 1,
-        zoom - 1
-      );
+      // Handle skip cells
+      if (colorIndex === SKIP_COLOR_INDEX) {
+        renderSkipCell(ctx, screenX, screenY, zoom - 1);
+      } else {
+        const color = pattern.colors[colorIndex] || pattern.colors[0];
+        ctx.fillStyle = colorToRgba(color);
+        ctx.fillRect(screenX, screenY, zoom - 1, zoom - 1);
+      }
     }
   }
 }
@@ -357,6 +394,7 @@ function renderHighlights(
  * Render dimming overlay for completed beads
  * Reading order: bottom-to-top (y=0 first), left-to-right (x=0 first)
  * Uses positionToCoordinates to match TTS reading order
+ * Properly handles skip cells (they are not counted in positions)
  */
 function renderCompletedOverlay(
   ctx: CanvasRenderingContext2D,
@@ -370,7 +408,7 @@ function renderCompletedOverlay(
   ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';  // Semi-transparent dark overlay
 
   for (let pos = 1; pos <= completedBeads; pos++) {
-    const coord = positionToCoordinates(pos, pattern.width, usedHeight);
+    const coord = positionToCoordinates(pos, pattern, usedHeight);
     if (!coord) continue;
 
     // Convert to screen coordinates (y=0 is visual bottom)

@@ -12,6 +12,7 @@ import type {
   TTSBeadItem,
   TTSGroupedItem,
 } from '@/types';
+import { SKIP_COLOR_INDEX } from '@/types';
 import { getColorName, getLanguageCode, COLOR_TRANSLATIONS } from './colorNames';
 import { isPositionInWedge } from '@/lib/pattern';
 import {
@@ -113,6 +114,7 @@ export function selectVoice(
 /**
  * Generate bead list for TTS in reading order
  * Beads are read from bottom-left to top-right (left-to-right, bottom-to-top)
+ * Skip cells (SKIP_COLOR_INDEX) are not included in the list
  */
 export function generateBeadListForTTS(
   pattern: BeadPattern,
@@ -121,12 +123,13 @@ export function generateBeadListForTTS(
   const items: TTSBeadItem[] = [];
   const { width, height, field, colors } = pattern;
 
-  // Calculate used height (rows with actual beads)
+  // Calculate used height (rows with actual beads, excluding skip cells)
   let usedHeight = height;
   for (let y = height - 1; y >= 0; y--) {
     let hasBeads = false;
     for (let x = 0; x < width; x++) {
-      if (field[y * width + x] !== 0) {
+      const colorIndex = field[y * width + x];
+      if (colorIndex !== 0 && colorIndex !== SKIP_COLOR_INDEX) {
         hasBeads = true;
         break;
       }
@@ -138,10 +141,17 @@ export function generateBeadListForTTS(
   }
 
   // Generate items in reading order (left-to-right, bottom-to-top)
+  // Skip cells are not included
   let position = 1;
   for (let y = 0; y < usedHeight; y++) {
     for (let x = 0; x < width; x++) {
       const colorIndex = field[y * width + x];
+
+      // Skip cells with SKIP_COLOR_INDEX
+      if (colorIndex === SKIP_COLOR_INDEX) {
+        continue;
+      }
+
       const color = colors[colorIndex];
       const colorName = getColorName(color?.name, language, colorIndex);
 
@@ -159,7 +169,7 @@ export function generateBeadListForTTS(
 
 /**
  * Generate bead list for TTS from ball pattern
- * Beads are read from bottom-left to top-right, skipping empty spaces
+ * Beads are read from bottom-left to top-right, skipping empty spaces and skip cells
  */
 export function generateBallBeadListForTTS(
   pattern: BallPattern,
@@ -169,7 +179,7 @@ export function generateBallBeadListForTTS(
   const { width, height, field, colors } = pattern;
 
   // Generate items in reading order (left-to-right, bottom-to-top)
-  // Skipping empty spaces between wedges
+  // Skipping empty spaces between wedges and skip cells
   let position = 1;
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -179,6 +189,12 @@ export function generateBallBeadListForTTS(
       }
 
       const colorIndex = field[y * width + x];
+
+      // Skip cells with SKIP_COLOR_INDEX
+      if (colorIndex === SKIP_COLOR_INDEX) {
+        continue;
+      }
+
       const color = colors[colorIndex];
       const colorName = getColorName(color?.name, language, colorIndex);
 
