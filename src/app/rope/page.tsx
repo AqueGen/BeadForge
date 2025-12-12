@@ -41,28 +41,28 @@ function NewPatternDialog({
 
         <div className="mb-4">
           <label className="mb-1 block text-sm font-medium text-gray-700">
-            Ширина (обхват): 3-50
+            Ширина (обхват): 0-1000
           </label>
           <input
             type="number"
-            min={3}
-            max={50}
+            min={0}
+            max={1000}
             value={width}
-            onChange={(e) => setWidth(Math.min(50, Math.max(3, parseInt(e.target.value) || 3)))}
+            onChange={(e) => setWidth(Math.min(1000, Math.max(0, parseInt(e.target.value) || 0)))}
             className="w-full rounded border px-3 py-2"
           />
         </div>
 
         <div className="mb-6">
           <label className="mb-1 block text-sm font-medium text-gray-700">
-            Высота (ряды): 1-1000
+            Высота (ряды): 0-1000
           </label>
           <input
             type="number"
-            min={1}
+            min={0}
             max={1000}
             value={height}
-            onChange={(e) => setHeight(Math.min(1000, Math.max(1, parseInt(e.target.value) || 1)))}
+            onChange={(e) => setHeight(Math.min(1000, Math.max(0, parseInt(e.target.value) || 0)))}
             className="w-full rounded border px-3 py-2"
           />
         </div>
@@ -210,14 +210,6 @@ export default function RopeEditorPage() {
           <span className="text-gray-400">|</span>
           <span className="text-sm text-gray-600">{pattern.name || 'Жгут'}</span>
         </div>
-        <nav className="flex items-center gap-2">
-          <Link
-            href="/ball"
-            className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
-          >
-            Шар →
-          </Link>
-        </nav>
       </header>
 
       <Toolbar

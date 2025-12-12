@@ -20,17 +20,17 @@ export default function HomePage() {
             Редактор схем для бисероплетения
           </h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Создавайте и редактируйте схемы для вязаных жгутов и оплетённых бусин.
+            Создавайте и редактируйте схемы для вязаных жгутов из бисера.
             Встроенная озвучка цветов поможет при плетении.
           </p>
         </div>
 
         {/* Navigation Cards */}
-        <div className="grid md:grid-cols-2 gap-6 mb-12">
+        <div className="flex justify-center mb-12">
           {/* Rope Editor Card */}
           <Link
             href="/rope"
-            className="block bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow p-6 border-2 border-transparent hover:border-primary-300"
+            className="block bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow p-6 border-2 border-transparent hover:border-primary-300 max-w-md"
           >
             <div className="flex items-center gap-4 mb-4">
               <div className="w-16 h-16 bg-primary-100 rounded-lg flex items-center justify-center">
@@ -46,34 +46,6 @@ export default function HomePage() {
             <p className="text-gray-600">
               Создавайте схемы для вязаных жгутов с поддержкой разной ширины.
               Просматривайте черновик, исправленную схему и симуляцию готового изделия.
-            </p>
-            <div className="mt-4 text-primary-600 font-medium flex items-center gap-2">
-              Открыть редактор
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </Link>
-
-          {/* Ball Editor Card */}
-          <Link
-            href="/ball"
-            className="block bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow p-6 border-2 border-transparent hover:border-primary-300"
-          >
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-16 h-16 bg-primary-100 rounded-lg flex items-center justify-center">
-                <svg className="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="10" strokeWidth={2} />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold text-gray-900">Шар</h3>
-                <p className="text-sm text-gray-500">Оплетённая бисером бусина</p>
-              </div>
-            </div>
-            <p className="text-gray-600">
-              Создавайте схемы для оплетённых бисером шаров.
-              Работайте с клиньями, копируйте и зеркально отражайте элементы.
             </p>
             <div className="mt-4 text-primary-600 font-medium flex items-center gap-2">
               Открыть редактор

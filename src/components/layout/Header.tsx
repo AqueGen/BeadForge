@@ -27,16 +27,6 @@ export const Header: FC<HeaderProps> = ({ patternName = 'Untitled' }) => {
         >
           Rope
         </Link>
-        <a
-          href="/ball"
-          className={`text-sm transition-colors ${
-            pathname === '/ball'
-              ? 'text-primary-400'
-              : 'text-gray-400 hover:text-white'
-          }`}
-        >
-          Ball
-        </a>
       </nav>
 
       <span className="ml-auto text-sm text-gray-400">{patternName}</span>

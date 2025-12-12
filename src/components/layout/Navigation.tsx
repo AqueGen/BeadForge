@@ -36,15 +36,6 @@ export function Navigation({ className = '' }: NavigationProps) {
         </svg>
       ),
     },
-    {
-      href: '/ball' as Route,
-      label: 'Шар',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <circle cx="12" cy="12" r="9" strokeWidth={2} />
-        </svg>
-      ),
-    },
   ];
 
   return (
@@ -89,8 +80,7 @@ export function Navigation({ className = '' }: NavigationProps) {
         onClick={() => {
           alert(
             'BeadForge — редактор схем для бисероплетения\n\n' +
-            '• Жгут — создание схем для вязаных жгутов\n' +
-            '• Шар — создание схем для оплетённых бусин\n\n' +
+            '• Жгут — создание схем для вязаных жгутов\n\n' +
             'Клавиши:\n' +
             'Space — Воспроизвести/Пауза\n' +
             '← / → — Назад/Вперёд\n' +
