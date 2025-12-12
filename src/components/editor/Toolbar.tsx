@@ -5,8 +5,8 @@ import type { DrawingTool } from '@/types';
 import { cn } from '@/lib/utils';
 
 interface ToolbarProps {
-  tool: DrawingTool;
-  onToolChange: (tool: DrawingTool) => void;
+  tool?: DrawingTool;
+  onToolChange?: (tool: DrawingTool) => void;
   zoom: number;
   onZoomChange: (zoom: number) => void;
   onClear: () => void;
@@ -133,30 +133,32 @@ export const Toolbar: FC<ToolbarProps> = ({
         </ToolbarGroup>
       )}
 
-      {/* Drawing tools */}
-      <ToolbarGroup>
-        <ToolButton
-          active={tool === 'pencil'}
-          onClick={() => onToolChange('pencil')}
-          title="Pencil Tool"
-        >
-          ✏️ Pencil
-        </ToolButton>
-        <ToolButton
-          active={tool === 'fill'}
-          onClick={() => onToolChange('fill')}
-          title="Fill Tool"
-        >
-          🪣 Fill
-        </ToolButton>
-        <ToolButton
-          active={tool === 'pipette'}
-          onClick={() => onToolChange('pipette')}
-          title="Color Picker"
-        >
-          💧 Pick
-        </ToolButton>
-      </ToolbarGroup>
+      {/* Drawing tools - only shown if tool props are provided */}
+      {tool !== undefined && onToolChange && (
+        <ToolbarGroup>
+          <ToolButton
+            active={tool === 'pencil'}
+            onClick={() => onToolChange('pencil')}
+            title="Pencil Tool"
+          >
+            ✏️ Pencil
+          </ToolButton>
+          <ToolButton
+            active={tool === 'fill'}
+            onClick={() => onToolChange('fill')}
+            title="Fill Tool"
+          >
+            🪣 Fill
+          </ToolButton>
+          <ToolButton
+            active={tool === 'pipette'}
+            onClick={() => onToolChange('pipette')}
+            title="Color Picker"
+          >
+            💧 Pick
+          </ToolButton>
+        </ToolbarGroup>
+      )}
 
       {/* Pattern operations */}
       <ToolbarGroup>

@@ -98,6 +98,17 @@ export default function RopeEditorPage() {
   const [ttsNavigationMode, setTtsNavigationMode] = useState(false);
   const [editModeEnabled, setEditModeEnabled] = useState(false);
   const [ttsNavigateTarget, setTtsNavigateTarget] = useState<number | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true); // Default: collapsed
+
+  // Toggle sidebar - expanding enables edit mode, collapsing disables it
+  const handleSidebarToggle = useCallback(() => {
+    setSidebarCollapsed(prev => {
+      const newCollapsed = !prev;
+      // Expanding enables edit mode, collapsing disables it
+      setEditModeEnabled(!newCollapsed);
+      return newCollapsed;
+    });
+  }, []);
 
   // Refs for synchronized scrolling
   const draftScrollRef = useRef<HTMLDivElement>(null);
@@ -210,8 +221,6 @@ export default function RopeEditorPage() {
       </header>
 
       <Toolbar
-        tool={tool}
-        onToolChange={setTool}
         zoom={zoom}
         onZoomChange={setZoom}
         onClear={() => actions.clear()}
@@ -231,48 +240,129 @@ export default function RopeEditorPage() {
       />
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <aside className="w-52 shrink-0 overflow-y-auto border-r bg-white p-4">
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-            Цвета
-          </h3>
-          <ColorPalette
-            colors={DEFAULT_COLORS}
-            selectedColor={selectedColor}
-            onColorSelect={setSelectedColor}
-          />
-
-          {/* Sample Patterns */}
-          <div className="mt-6 border-t pt-4">
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-              Примеры
-            </h3>
-            <div className="space-y-1">
-              {SAMPLE_PATTERNS.map((sample) => (
+        {/* Collapsible Edit Sidebar */}
+        <aside
+          className={`shrink-0 border-r bg-white transition-all duration-200 ${
+            sidebarCollapsed ? 'w-12' : 'w-56'
+          }`}
+        >
+          {/* Header - always visible */}
+          <div
+            className={`flex h-10 items-center border-b ${
+              sidebarCollapsed
+                ? 'justify-center cursor-pointer hover:bg-green-50'
+                : 'justify-between px-3 bg-green-50'
+            }`}
+            onClick={sidebarCollapsed ? handleSidebarToggle : undefined}
+            title={sidebarCollapsed ? 'Открыть редактирование' : undefined}
+          >
+            {sidebarCollapsed ? (
+              <span className="text-xl" title="Открыть редактирование">✏️</span>
+            ) : (
+              <>
+                <span className="text-xs font-semibold uppercase tracking-wider text-green-700">
+                  ✏️ Редактирование
+                </span>
                 <button
-                  key={sample.id}
-                  onClick={() => actions.loadSample(sample.id)}
-                  className="w-full text-left px-2 py-1 text-xs rounded hover:bg-gray-100 transition-colors"
-                  title={sample.description}
+                  onClick={handleSidebarToggle}
+                  className="rounded p-1 text-gray-400 hover:bg-green-100 hover:text-gray-600"
+                  title="Закрыть редактирование"
                 >
-                  {sample.name}
+                  ✕
                 </button>
-              ))}
-            </div>
+              </>
+            )}
           </div>
 
-          <div className="mt-6 border-t pt-4">
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-              Информация
-            </h3>
-            <p className="text-xs text-gray-600">
-              Размер: {pattern.width} × {pattern.height}
-            </p>
-            <p className="text-xs text-gray-600">Инструмент: {tool}</p>
-            <p className="text-xs text-gray-600">
-              Цвет: {DEFAULT_COLORS[selectedColor]?.name || `#${selectedColor}`}
-            </p>
-          </div>
+          {/* Content - only visible when expanded */}
+          {!sidebarCollapsed && (
+            <div className="overflow-y-auto p-3" style={{ height: 'calc(100% - 40px)' }}>
+              {/* Drawing Tools */}
+              <div className="mb-4">
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  Инструменты
+                </h3>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => setTool('pencil')}
+                    className={`flex-1 rounded px-2 py-1.5 text-xs transition-colors ${
+                      tool === 'pencil'
+                        ? 'bg-primary-500 text-white'
+                        : 'bg-gray-100 hover:bg-gray-200'
+                    }`}
+                    title="Карандаш"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    onClick={() => setTool('fill')}
+                    className={`flex-1 rounded px-2 py-1.5 text-xs transition-colors ${
+                      tool === 'fill'
+                        ? 'bg-primary-500 text-white'
+                        : 'bg-gray-100 hover:bg-gray-200'
+                    }`}
+                    title="Заливка"
+                  >
+                    🪣
+                  </button>
+                  <button
+                    onClick={() => setTool('pipette')}
+                    className={`flex-1 rounded px-2 py-1.5 text-xs transition-colors ${
+                      tool === 'pipette'
+                        ? 'bg-primary-500 text-white'
+                        : 'bg-gray-100 hover:bg-gray-200'
+                    }`}
+                    title="Пипетка"
+                  >
+                    💧
+                  </button>
+                </div>
+              </div>
+
+              {/* Color Palette */}
+              <div className="mb-4">
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  Цвета
+                </h3>
+                <ColorPalette
+                  colors={DEFAULT_COLORS}
+                  selectedColor={selectedColor}
+                  onColorSelect={setSelectedColor}
+                />
+              </div>
+
+              {/* Sample Patterns */}
+              <div className="border-t pt-3">
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  Примеры
+                </h3>
+                <div className="space-y-1">
+                  {SAMPLE_PATTERNS.map((sample) => (
+                    <button
+                      key={sample.id}
+                      onClick={() => actions.loadSample(sample.id)}
+                      className="w-full text-left px-2 py-1 text-xs rounded hover:bg-gray-100 transition-colors"
+                      title={sample.description}
+                    >
+                      {sample.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-4 border-t pt-3">
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  Информация
+                </h3>
+                <p className="text-xs text-gray-600">
+                  Размер: {pattern.width} × {pattern.height}
+                </p>
+                <p className="text-xs text-gray-600">
+                  Цвет: {DEFAULT_COLORS[selectedColor]?.name || `#${selectedColor}`}
+                </p>
+              </div>
+            </div>
+          )}
         </aside>
 
         {/* Canvas Area - overflow-hidden to prevent page scroll */}
@@ -295,6 +385,8 @@ export default function RopeEditorPage() {
             pattern={pattern}
             zoom={zoom}
             viewType="corrected"
+            onBeadClick={handleBeadClick}
+            onBeadDrag={handleBeadDrag}
             scrollContainerRef={correctedScrollRef}
             onScroll={(top, left) => handleSyncScroll(top, left, 'corrected')}
           />
@@ -318,7 +410,6 @@ export default function RopeEditorPage() {
             onTTSStateChange={handleTTSStateChange}
             onCompletedBeadsChange={setCompletedBeads}
             onNavigationModeChange={setTtsNavigationMode}
-            onEditModeChange={setEditModeEnabled}
             navigateToPosition={ttsNavigateTarget}
             onNavigateComplete={() => setTtsNavigateTarget(null)}
           />

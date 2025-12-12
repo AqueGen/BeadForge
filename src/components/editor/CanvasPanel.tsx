@@ -115,8 +115,18 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
       const pixelX = (e.clientX - rect.left) * scaleX;
       const pixelY = (e.clientY - rect.top) * scaleY;
 
-      const x = Math.floor(pixelX / zoom);
+      // Calculate y first (same for both views)
       const y = pattern.height - 1 - Math.floor(pixelY / zoom);
+
+      // For corrected view, account for brick offset on odd rows
+      let adjustedPixelX = pixelX;
+      if (viewType === 'corrected' && y >= 0 && y < pattern.height) {
+        // Odd rows are shifted right by half a bead
+        const dx = y % 2 === 1 ? zoom / 2 : 0;
+        adjustedPixelX = pixelX - dx;
+      }
+
+      const x = Math.floor(adjustedPixelX / zoom);
 
       if (x < 0 || x >= pattern.width || y < 0 || y >= pattern.height) {
         return null;
@@ -124,7 +134,7 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
 
       return { x, y };
     },
-    [zoom, pattern.width, pattern.height]
+    [zoom, pattern.width, pattern.height, viewType]
   );
 
   const handleMouseDown = useCallback(
@@ -137,7 +147,8 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
         return;
       }
 
-      if (viewType !== 'draft') return;
+      // Allow editing on draft and corrected views
+      if (viewType !== 'draft' && viewType !== 'corrected') return;
 
       const pos = getGridPosition(e);
       if (pos && onBeadClick) {
@@ -160,7 +171,8 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
         return;
       }
 
-      if (!isDrawing || viewType !== 'draft') return;
+      // Allow dragging on draft and corrected views
+      if (!isDrawing || (viewType !== 'draft' && viewType !== 'corrected')) return;
 
       const pos = getGridPosition(e);
       if (pos && onBeadDrag) {
@@ -200,7 +212,7 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
         <canvas
           ref={canvasRef}
           className={
-            viewType === 'draft'
+            viewType === 'draft' || viewType === 'corrected'
               ? 'cursor-crosshair'
               : viewType === 'simulation'
                 ? 'cursor-grab active:cursor-grabbing'
