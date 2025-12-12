@@ -195,9 +195,9 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
           <h4 className="text-sm font-medium text-gray-700">{title}</h4>
           {viewType === 'simulation' && onShiftChange && (
             <div className="flex items-center gap-3">
-              <span className="text-xs text-gray-400">← Зажмите ЛКМ и тяните →</span>
+              <span className="text-xs text-gray-400">← Затисніть ЛКМ і тягніть →</span>
               <div className="flex items-center gap-1 rounded bg-white px-2 py-0.5 text-xs shadow-sm">
-                <span className="text-gray-400">сдвиг:</span>
+                <span className="text-gray-400">зсув:</span>
                 <span className="font-bold text-gray-700">{shift}</span>
               </div>
             </div>

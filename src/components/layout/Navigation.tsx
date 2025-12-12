@@ -20,7 +20,7 @@ export function Navigation({ className = '' }: NavigationProps) {
   const navItems: NavItem[] = [
     {
       href: '/' as Route,
-      label: 'Главная',
+      label: 'Головна',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -29,7 +29,7 @@ export function Navigation({ className = '' }: NavigationProps) {
     },
     {
       href: '/rope' as Route,
-      label: 'Жгут',
+      label: 'Джгут',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -76,14 +76,14 @@ export function Navigation({ className = '' }: NavigationProps) {
       {/* Help / Info */}
       <button
         className="w-10 h-10 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
-        title="Справка"
+        title="Довідка"
         onClick={() => {
           alert(
-            'BeadForge — редактор схем для бисероплетения\n\n' +
-            '• Жгут — создание схем для вязаных жгутов\n\n' +
-            'Клавиши:\n' +
-            'Space — Воспроизвести/Пауза\n' +
-            '← / → — Назад/Вперёд\n' +
+            'BeadForge — редактор схем для бісероплетіння\n\n' +
+            '• Джгут — створення схем для в\'язаних джгутів\n\n' +
+            'Клавіші:\n' +
+            'Space — Відтворити/Пауза\n' +
+            '← / → — Назад/Вперед\n' +
             'Esc — Стоп'
           );
         }}

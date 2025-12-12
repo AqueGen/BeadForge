@@ -24,29 +24,14 @@ const SPEED_RATES: Record<TTSSpeed, number> = {
 
 /**
  * Voice registry - defines available pre-recorded voices
+ * Currently only Ukrainian voices are available
  */
 export const AUDIO_VOICES: AudioVoiceConfig[] = [
-  // Russian voices
-  {
-    id: 'ru-female-default',
-    name: 'Алёна',
-    language: 'ru',
-    gender: 'female',
-    isDefault: true,
-  },
   // Ukrainian voices
   {
     id: 'uk-female-default',
     name: 'Катерина',
     language: 'uk',
-    gender: 'female',
-    isDefault: true,
-  },
-  // English voices
-  {
-    id: 'en-female-default',
-    name: 'Sarah',
-    language: 'en',
     gender: 'female',
     isDefault: true,
   },

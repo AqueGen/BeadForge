@@ -102,14 +102,14 @@ export const Toolbar: FC<ToolbarProps> = ({
     <div className="flex flex-wrap items-center gap-4 border-b bg-white px-4 py-2">
       {/* File operations */}
       <ToolbarGroup>
-        <ToolButton onClick={onNew} title="New Pattern">
-          📄 New
+        <ToolButton onClick={onNew} title="Нова схема">
+          📄 Нова
         </ToolButton>
-        <ToolButton onClick={handleLoadClick} title="Open Pattern (.beadforge, .jbb)">
-          📂 Open
+        <ToolButton onClick={handleLoadClick} title="Відкрити схему (.beadforge, .jbb)">
+          📂 Відкрити
         </ToolButton>
-        <ToolButton onClick={onSave} title="Save Pattern (.beadforge)">
-          💾 Save
+        <ToolButton onClick={onSave} title="Зберегти схему (.beadforge)">
+          💾 Зберегти
         </ToolButton>
         <input
           ref={fileInputRef}
@@ -124,12 +124,12 @@ export const Toolbar: FC<ToolbarProps> = ({
       {(onLoadJBB || onSaveJBB) && (
         <ToolbarGroup>
           {onLoadJBB && (
-            <ToolButton onClick={handleLoadJBBClick} title="Import JBead .jbb file">
+            <ToolButton onClick={handleLoadJBBClick} title="Імпорт JBead .jbb файлу">
               📥 JBB
             </ToolButton>
           )}
           {onSaveJBB && (
-            <ToolButton onClick={onSaveJBB} title="Export to JBead .jbb format">
+            <ToolButton onClick={onSaveJBB} title="Експорт у формат JBead .jbb">
               📤 JBB
             </ToolButton>
           )}
@@ -149,37 +149,37 @@ export const Toolbar: FC<ToolbarProps> = ({
           <ToolButton
             active={tool === 'pencil'}
             onClick={() => onToolChange('pencil')}
-            title="Pencil Tool"
+            title="Олівець"
           >
-            ✏️ Pencil
+            ✏️ Олівець
           </ToolButton>
           <ToolButton
             active={tool === 'fill'}
             onClick={() => onToolChange('fill')}
-            title="Fill Tool"
+            title="Заливка"
           >
-            🪣 Fill
+            🪣 Заливка
           </ToolButton>
           <ToolButton
             active={tool === 'pipette'}
             onClick={() => onToolChange('pipette')}
-            title="Color Picker"
+            title="Піпетка"
           >
-            💧 Pick
+            💧 Піпетка
           </ToolButton>
         </ToolbarGroup>
       )}
 
       {/* Pattern operations */}
       <ToolbarGroup>
-        <ToolButton onClick={onClear} title="Clear Pattern">
-          🗑️ Clear
+        <ToolButton onClick={onClear} title="Очистити схему">
+          🗑️ Очистити
         </ToolButton>
-        <ToolButton onClick={onMirrorH} title="Mirror Horizontal">
-          ↔️ Mirror H
+        <ToolButton onClick={onMirrorH} title="Віддзеркалити горизонтально">
+          ↔️ Дзеркало Г
         </ToolButton>
-        <ToolButton onClick={onMirrorV} title="Mirror Vertical">
-          ↕️ Mirror V
+        <ToolButton onClick={onMirrorV} title="Віддзеркалити вертикально">
+          ↕️ Дзеркало В
         </ToolButton>
       </ToolbarGroup>
 
@@ -187,14 +187,14 @@ export const Toolbar: FC<ToolbarProps> = ({
       <ToolbarGroup>
         <ToolButton
           onClick={() => onZoomChange(Math.max(5, zoom - 5))}
-          title="Zoom Out"
+          title="Зменшити"
         >
           ➖
         </ToolButton>
         <span className="flex items-center px-2 text-sm text-gray-600">{zoom}px</span>
         <ToolButton
           onClick={() => onZoomChange(Math.min(50, zoom + 5))}
-          title="Zoom In"
+          title="Збільшити"
         >
           ➕
         </ToolButton>
@@ -202,8 +202,8 @@ export const Toolbar: FC<ToolbarProps> = ({
 
       {/* Stats */}
       <div className="flex gap-1">
-        <ToolButton onClick={onShowStats} title="Show Statistics">
-          📊 Stats
+        <ToolButton onClick={onShowStats} title="Показати статистику">
+          📊 Статистика
         </ToolButton>
       </div>
 

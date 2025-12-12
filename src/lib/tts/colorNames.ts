@@ -326,6 +326,7 @@ export function getLanguageCode(language: TTSLanguage): string {
 
 /**
  * Get available languages
+ * Note: Only Ukrainian is currently supported. Structure kept for future localization.
  */
 export function getAvailableLanguages(): Array<{
   code: TTSLanguage;
@@ -334,7 +335,5 @@ export function getAvailableLanguages(): Array<{
 }> {
   return [
     { code: 'uk', name: 'Ukrainian', nativeName: 'Українська' },
-    { code: 'en', name: 'English', nativeName: 'English' },
-    { code: 'ru', name: 'Russian', nativeName: 'Русский' },
   ];
 }

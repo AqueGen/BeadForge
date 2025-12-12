@@ -39,7 +39,7 @@ function NewPatternDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="w-80 rounded-lg bg-white p-6 shadow-xl">
-        <h2 className="mb-4 text-lg font-semibold">Новая схема</h2>
+        <h2 className="mb-4 text-lg font-semibold">Нова схема</h2>
 
         <div className="mb-4">
           <label className="mb-1 block text-sm font-medium text-gray-700">
@@ -57,7 +57,7 @@ function NewPatternDialog({
 
         <div className="mb-6">
           <label className="mb-1 block text-sm font-medium text-gray-700">
-            Высота (ряды): 0-1000
+            Висота (ряди): 0-1000
           </label>
           <input
             type="number"
@@ -74,13 +74,13 @@ function NewPatternDialog({
             onClick={onClose}
             className="rounded border px-4 py-2 text-sm hover:bg-gray-50"
           >
-            Отмена
+            Скасувати
           </button>
           <button
             onClick={handleCreate}
             className="rounded bg-primary-500 px-4 py-2 text-sm text-white hover:bg-primary-600"
           >
-            Создать
+            Створити
           </button>
         </div>
       </div>
@@ -230,7 +230,7 @@ export default function RopeEditorPage() {
         onShowStats={() => {
           const stats = actions.getStats();
           alert(
-            `Ширина: ${stats.width}\nВысота: ${stats.usedHeight}/${stats.height}\nРаппорт: ${stats.repeat}\nВсего бусин: ${stats.totalBeads}`
+            `Ширина: ${stats.width}\nВисота: ${stats.usedHeight}/${stats.height}\nРапорт: ${stats.repeat}\nВсього бісерин: ${stats.totalBeads}`
           );
         }}
         onSaveJBB={() => actions.saveJBB()}
@@ -256,19 +256,19 @@ export default function RopeEditorPage() {
                 : 'justify-between px-3 bg-green-50'
             }`}
             onClick={sidebarCollapsed ? handleSidebarToggle : undefined}
-            title={sidebarCollapsed ? 'Открыть редактирование' : undefined}
+            title={sidebarCollapsed ? 'Відкрити редагування' : undefined}
           >
             {sidebarCollapsed ? (
-              <span className="text-xl" title="Открыть редактирование">✏️</span>
+              <span className="text-xl" title="Відкрити редагування">✏️</span>
             ) : (
               <>
                 <span className="text-xs font-semibold uppercase tracking-wider text-green-700">
-                  ✏️ Редактирование
+                  ✏️ Редагування
                 </span>
                 <button
                   onClick={handleSidebarToggle}
                   className="rounded p-1 text-gray-400 hover:bg-green-100 hover:text-gray-600"
-                  title="Закрыть редактирование"
+                  title="Закрити редагування"
                 >
                   ✕
                 </button>
@@ -282,7 +282,7 @@ export default function RopeEditorPage() {
               {/* Drawing Tools */}
               <div className="mb-4">
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  Инструменты
+                  Інструменти
                 </h3>
                 <div className="flex gap-1">
                   <button
@@ -292,7 +292,7 @@ export default function RopeEditorPage() {
                         ? 'bg-primary-500 text-white'
                         : 'bg-gray-100 hover:bg-gray-200'
                     }`}
-                    title="Карандаш"
+                    title="Олівець"
                   >
                     ✏️
                   </button>
@@ -314,7 +314,7 @@ export default function RopeEditorPage() {
                         ? 'bg-primary-500 text-white'
                         : 'bg-gray-100 hover:bg-gray-200'
                     }`}
-                    title="Пипетка"
+                    title="Піпетка"
                   >
                     💧
                   </button>
@@ -324,7 +324,7 @@ export default function RopeEditorPage() {
               {/* Color Palette */}
               <div className="mb-4">
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  Цвета
+                  Кольори
                 </h3>
                 {/* Skip button */}
                 <button
@@ -334,7 +334,7 @@ export default function RopeEditorPage() {
                       ? 'border-primary-500 bg-gray-100'
                       : 'border-gray-300 bg-white hover:bg-gray-50'
                   }`}
-                  title="Пропуск (не озвучивается)"
+                  title="Пропуск (не озвучується)"
                 >
                   <span className="flex h-5 w-5 items-center justify-center rounded-full border border-gray-400 text-gray-500 text-[10px] font-bold">
                     ✕
@@ -351,7 +351,7 @@ export default function RopeEditorPage() {
               {/* Sample Patterns */}
               <div className="border-t pt-3">
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  Примеры
+                  Приклади
                 </h3>
                 <div className="space-y-1">
                   {SAMPLE_PATTERNS.map((sample) => (
@@ -369,13 +369,13 @@ export default function RopeEditorPage() {
 
               <div className="mt-4 border-t pt-3">
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  Информация
+                  Інформація
                 </h3>
                 <p className="text-xs text-gray-600">
-                  Размер: {pattern.width} × {pattern.height}
+                  Розмір: {pattern.width} × {pattern.height}
                 </p>
                 <p className="text-xs text-gray-600">
-                  Цвет: {selectedColor === SKIP_COLOR_INDEX ? 'Пропуск' : (DEFAULT_COLORS[selectedColor]?.name || `#${selectedColor}`)}
+                  Колір: {selectedColor === SKIP_COLOR_INDEX ? 'Пропуск' : (DEFAULT_COLORS[selectedColor]?.name || `#${selectedColor}`)}
                 </p>
               </div>
             </div>
@@ -385,7 +385,7 @@ export default function RopeEditorPage() {
         {/* Canvas Area - overflow-hidden to prevent page scroll */}
         <main className="flex flex-1 gap-4 overflow-hidden bg-gray-200 p-4">
           <CanvasPanel
-            title="Черновик (редактирование)"
+            title="Чернетка (редагування)"
             pattern={pattern}
             zoom={zoom}
             viewType="draft"
@@ -398,7 +398,7 @@ export default function RopeEditorPage() {
           />
 
           <CanvasPanel
-            title="Исправленный вид"
+            title="Виправлений вигляд"
             pattern={pattern}
             zoom={zoom}
             viewType="corrected"
@@ -409,7 +409,7 @@ export default function RopeEditorPage() {
           />
 
           <CanvasPanel
-            title="Симуляция"
+            title="Симуляція"
             pattern={pattern}
             zoom={zoom}
             viewType="simulation"

@@ -17,11 +17,11 @@ export default function HomePage() {
         {/* Hero Section */}
         <div className="text-center mb-12">
           <h2 className="text-4xl font-bold text-gray-900 mb-4">
-            Редактор схем для бисероплетения
+            Редактор схем для бісероплетіння
           </h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Создавайте и редактируйте схемы для вязаных жгутов из бисера.
-            Встроенная озвучка цветов поможет при плетении.
+            Створюйте та редагуйте схеми для в&apos;язаних джгутів з бісеру.
+            Вбудована озвучка кольорів допоможе при плетінні.
           </p>
         </div>
 
@@ -39,16 +39,16 @@ export default function HomePage() {
                 </svg>
               </div>
               <div>
-                <h3 className="text-xl font-semibold text-gray-900">Жгут</h3>
-                <p className="text-sm text-gray-500">Вязаный жгут из бисера</p>
+                <h3 className="text-xl font-semibold text-gray-900">Джгут</h3>
+                <p className="text-sm text-gray-500">В&apos;язаний джгут з бісеру</p>
               </div>
             </div>
             <p className="text-gray-600">
-              Создавайте схемы для вязаных жгутов с поддержкой разной ширины.
-              Просматривайте черновик, исправленную схему и симуляцию готового изделия.
+              Створюйте схеми для в&apos;язаних джгутів з підтримкою різної ширини.
+              Переглядайте чернетку, виправлену схему та симуляцію готового виробу.
             </p>
             <div className="mt-4 text-primary-600 font-medium flex items-center gap-2">
-              Открыть редактор
+              Відкрити редактор
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
@@ -59,7 +59,7 @@ export default function HomePage() {
         {/* Features Section */}
         <div className="bg-white rounded-xl shadow-lg p-8">
           <h3 className="text-2xl font-semibold text-gray-900 mb-6 text-center">
-            Возможности
+            Можливості
           </h3>
           <div className="grid md:grid-cols-3 gap-6">
             <div className="text-center">
@@ -70,7 +70,7 @@ export default function HomePage() {
               </div>
               <h4 className="font-medium text-gray-900 mb-2">Озвучка (TTS)</h4>
               <p className="text-sm text-gray-600">
-                Озвучивание цветов для удобного плетения без постоянного взгляда на схему
+                Озвучування кольорів для зручного плетіння без постійного погляду на схему
               </p>
             </div>
             <div className="text-center">
@@ -79,9 +79,9 @@ export default function HomePage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                 </svg>
               </div>
-              <h4 className="font-medium text-gray-900 mb-2">Импорт/Экспорт</h4>
+              <h4 className="font-medium text-gray-900 mb-2">Імпорт/Експорт</h4>
               <p className="text-sm text-gray-600">
-                Поддержка формата JBB для обмена схемами с другими программами
+                Підтримка формату JBB для обміну схемами з іншими програмами
               </p>
             </div>
             <div className="text-center">
@@ -90,9 +90,9 @@ export default function HomePage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
               </div>
-              <h4 className="font-medium text-gray-900 mb-2">Сохранение прогресса</h4>
+              <h4 className="font-medium text-gray-900 mb-2">Збереження прогресу</h4>
               <p className="text-sm text-gray-600">
-                Автоматическое сохранение позиции озвучки для продолжения работы
+                Автоматичне збереження позиції озвучки для продовження роботи
               </p>
             </div>
           </div>
@@ -102,7 +102,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="bg-white border-t mt-12">
         <div className="max-w-4xl mx-auto px-4 py-6 text-center text-gray-500 text-sm">
-          BeadForge — редактор схем для бисероплетения
+          BeadForge — редактор схем для бісероплетіння
         </div>
       </footer>
     </div>
