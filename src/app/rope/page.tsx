@@ -13,6 +13,7 @@ import { TTSPanel } from '@/components/tts';
 import { ConfirmDialog, StatsModal, type StatsModalData } from '@/components/ui/Modals';
 import { PDFExportModal } from '@/components/pdf';
 import { BeadingPanel } from '@/components/beading';
+import { Preview3DModal } from '@/components/3d';
 import { EventToast, useEventToast, EventsPanel, EventEditorModal, CheckpointRestoreDialog } from '@/components/events';
 import { usePattern } from '@/hooks/usePattern';
 import { useColorMapping } from '@/hooks/useColorMapping';
@@ -116,6 +117,7 @@ export default function RopeEditorPage() {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [showPDFExportModal, setShowPDFExportModal] = useState(false);
+  const [show3DModal, setShow3DModal] = useState(false);
   const [panelVisibility, setPanelVisibility] = useState<PanelVisibility>({
     draft: true,
     corrected: true,
@@ -499,6 +501,7 @@ export default function RopeEditorPage() {
         colorMappingWarningCount={colorMapping.duplicateMappingCount}
         onColorMappingClick={() => setShowColorMappingPanel(true)}
         onExportPDF={() => setShowPDFExportModal(true)}
+        onShow3D={() => setShow3DModal(true)}
         panelVisibility={panelVisibility}
         onPanelVisibilityChange={handlePanelVisibilityChange}
       />
@@ -1128,6 +1131,16 @@ export default function RopeEditorPage() {
         onClose={() => setShowPDFExportModal(false)}
         pattern={pattern}
       />
+
+      {/* 3D Preview Modal */}
+      {show3DModal && (
+        <Preview3DModal
+          pattern={pattern}
+          patternType="rope"
+          colorMappings={colorMapping.mappings}
+          onClose={() => setShow3DModal(false)}
+        />
+      )}
 
       {/* Delete Color Confirmation Dialog */}
       <ConfirmDialog

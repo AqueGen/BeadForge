@@ -5,7 +5,11 @@
       "Bash(npm run test:*)",
       "Bash(npx tsc:*)",
       "Bash(dir:*)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Bash(npm install:*)",
+      "Bash(if not exist \"e:\\BeadForge\\src\\components\\3d\" mkdir \"e:\\BeadForge\\src\\components\\3d\")",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run lint:*)"
     ]
   }
 }

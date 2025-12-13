@@ -28,6 +28,7 @@ interface ToolbarProps {
   onSaveJBB?: () => void;
   onLoadJBB?: (file: File) => void;
   onExportPDF?: () => void;
+  onShow3D?: () => void;
   // Color mapping props
   showColorMapping?: boolean;
   colorMappingHasWarning?: boolean;
@@ -101,6 +102,7 @@ export const Toolbar: FC<ToolbarProps> = ({
   onSaveJBB,
   onLoadJBB,
   onExportPDF,
+  onShow3D,
   showColorMapping,
   colorMappingHasWarning,
   colorMappingWarningCount,
@@ -245,6 +247,11 @@ export const Toolbar: FC<ToolbarProps> = ({
         {onExportPDF && (
           <ToolButton onClick={onExportPDF} title="Експорт у PDF">
             🖨️
+          </ToolButton>
+        )}
+        {onShow3D && (
+          <ToolButton onClick={onShow3D} title="3D перегляд">
+            🧊
           </ToolButton>
         )}
       </div>
