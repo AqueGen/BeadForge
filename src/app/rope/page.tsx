@@ -601,21 +601,35 @@ export default function RopeEditorPage() {
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
                   Кольори
                 </h3>
-                {/* Skip button */}
-                <button
-                  onClick={() => setSelectedColor(SKIP_COLOR_INDEX)}
-                  className={`mb-2 w-full flex items-center justify-center gap-2 rounded border-2 px-2 py-1.5 text-xs transition-colors ${
-                    selectedColor === SKIP_COLOR_INDEX
-                      ? 'border-primary-500 bg-gray-100'
-                      : 'border-gray-300 bg-white hover:bg-gray-50'
-                  }`}
-                  title="Пропуск (не озвучується)"
-                >
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full border border-gray-400 text-gray-500 text-[10px] font-bold">
-                    ✕
-                  </span>
-                  <span>Пропуск</span>
-                </button>
+                {/* Skip and Eraser buttons */}
+                <div className="flex gap-1 mb-2">
+                  <button
+                    onClick={() => setSelectedColor(SKIP_COLOR_INDEX)}
+                    className={`flex-1 flex items-center justify-center gap-1.5 rounded border-2 px-2 py-1.5 text-xs transition-colors ${
+                      selectedColor === SKIP_COLOR_INDEX
+                        ? 'border-primary-500 bg-gray-100'
+                        : 'border-gray-300 bg-white hover:bg-gray-50'
+                    }`}
+                    title="Пропуск (не озвучується)"
+                  >
+                    <span className="flex h-4 w-4 items-center justify-center rounded-full border border-gray-400 text-gray-500 text-[8px] font-bold">
+                      ✕
+                    </span>
+                    <span>Пропуск</span>
+                  </button>
+                  <button
+                    onClick={() => setSelectedColor(EMPTY_COLOR_INDEX)}
+                    className={`flex-1 flex items-center justify-center gap-1.5 rounded border-2 px-2 py-1.5 text-xs transition-colors ${
+                      selectedColor === EMPTY_COLOR_INDEX
+                        ? 'border-primary-500 bg-pink-100'
+                        : 'border-gray-300 bg-white hover:bg-gray-50'
+                    }`}
+                    title="Гумка (очищує клітинку)"
+                  >
+                    <span>🧽</span>
+                    <span>Гумка</span>
+                  </button>
+                </div>
                 <ColorPalette
                   colors={pattern.colors}
                   selectedColor={selectedColor}
@@ -694,7 +708,7 @@ export default function RopeEditorPage() {
                   Розмір: {pattern.width} × {pattern.height}
                 </p>
                 <p className="text-xs text-gray-600">
-                  Колір: {selectedColor === SKIP_COLOR_INDEX ? 'Пропуск' : (pattern.colors[selectedColor]?.name || `#${selectedColor}`)}
+                  Колір: {selectedColor === SKIP_COLOR_INDEX ? 'Пропуск' : selectedColor === EMPTY_COLOR_INDEX ? 'Гумка' : (pattern.colors[selectedColor]?.name || `#${selectedColor}`)}
                 </p>
                 {selectedColor !== SKIP_COLOR_INDEX && selectedColor !== EMPTY_COLOR_INDEX && pattern.colors[selectedColor] && (
                   <p className="text-xs text-gray-600 font-mono">
