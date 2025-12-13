@@ -137,13 +137,13 @@ export const Toolbar: FC<ToolbarProps> = ({
       {/* File operations */}
       <ToolbarGroup>
         <ToolButton onClick={onNew} title="Нова схема">
-          📄 Нова
+          📄
         </ToolButton>
         <ToolButton onClick={handleLoadClick} title="Відкрити схему (.beadforge, .jbb)">
-          📂 Відкрити
+          📂
         </ToolButton>
         <ToolButton onClick={onSave} title="Зберегти схему (.beadforge)">
-          💾 Зберегти
+          💾
         </ToolButton>
         <input
           ref={fileInputRef}
@@ -159,12 +159,12 @@ export const Toolbar: FC<ToolbarProps> = ({
         <ToolbarGroup>
           {onLoadJBB && (
             <ToolButton onClick={handleLoadJBBClick} title="Імпорт JBead .jbb файлу">
-              📥 JBB
+              📥
             </ToolButton>
           )}
           {onSaveJBB && (
             <ToolButton onClick={onSaveJBB} title="Експорт у формат JBead .jbb">
-              📤 JBB
+              📤
             </ToolButton>
           )}
           <input
@@ -185,21 +185,21 @@ export const Toolbar: FC<ToolbarProps> = ({
             onClick={() => onToolChange('pencil')}
             title="Олівець"
           >
-            ✏️ Олівець
+            ✏️
           </ToolButton>
           <ToolButton
             active={tool === 'fill'}
             onClick={() => onToolChange('fill')}
             title="Заливка"
           >
-            🪣 Заливка
+            🪣
           </ToolButton>
           <ToolButton
             active={tool === 'pipette'}
             onClick={() => onToolChange('pipette')}
             title="Піпетка"
           >
-            💧 Піпетка
+            💧
           </ToolButton>
         </ToolbarGroup>
       )}
@@ -207,13 +207,13 @@ export const Toolbar: FC<ToolbarProps> = ({
       {/* Pattern operations */}
       <ToolbarGroup>
         <ToolButton onClick={onClear} title="Очистити схему">
-          🗑️ Очистити
+          🗑️
         </ToolButton>
         <ToolButton onClick={onMirrorH} title="Віддзеркалити горизонтально">
-          ↔️ Дзеркало Г
+          ↔️
         </ToolButton>
         <ToolButton onClick={onMirrorV} title="Віддзеркалити вертикально">
-          ↕️ Дзеркало В
+          ↕️
         </ToolButton>
       </ToolbarGroup>
 
@@ -237,7 +237,7 @@ export const Toolbar: FC<ToolbarProps> = ({
       {/* Stats */}
       <div className="flex gap-1">
         <ToolButton onClick={onShowStats} title="Показати статистику">
-          📊 Статистика
+          📊
         </ToolButton>
       </div>
 
@@ -255,34 +255,33 @@ export const Toolbar: FC<ToolbarProps> = ({
       {/* Panel Visibility Toggles */}
       {panelVisibility && onPanelVisibilityChange && (
         <div className="flex gap-1 ml-auto">
-          <span className="text-xs text-gray-400 self-center mr-1">Панелі:</span>
           <ToggleButton
             active={panelVisibility.draft}
             onClick={() => onPanelVisibilityChange('draft')}
             title="Показати/сховати чернетку"
           >
-            Чернетка
+            ✏️
           </ToggleButton>
           <ToggleButton
             active={panelVisibility.corrected}
             onClick={() => onPanelVisibilityChange('corrected')}
             title="Показати/сховати виправлений вигляд"
           >
-            Виправлений
+            👁️
           </ToggleButton>
           <ToggleButton
             active={panelVisibility.simulation}
             onClick={() => onPanelVisibilityChange('simulation')}
             title="Показати/сховати симуляцію"
           >
-            Симуляція
+            🎯
           </ToggleButton>
           <ToggleButton
             active={panelVisibility.tts}
             onClick={() => onPanelVisibilityChange('tts')}
             title="Показати/сховати TTS панель"
           >
-            TTS
+            🔊
           </ToggleButton>
         </div>
       )}

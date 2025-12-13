@@ -286,6 +286,9 @@ export function useCellEvents(patternId?: string): UseCellEventsReturn {
       return true; // No events for this timing, continue normally
     }
 
+    // Track if we should pause (but execute ALL events first)
+    let shouldPause = false;
+
     for (const event of eventsToExecute) {
       switch (event.type) {
         case 'sound':
@@ -294,8 +297,8 @@ export function useCellEvents(patternId?: string): UseCellEventsReturn {
 
         case 'action':
           if (event.actionType === 'pause') {
-            onPause?.();
-            return false; // Signal to pause TTS
+            // Mark for pause but continue executing other events
+            shouldPause = true;
           } else if (event.actionType === 'checkpoint') {
             // Checkpoint is handled by the TTS service, just continue
           }
@@ -305,6 +308,12 @@ export function useCellEvents(patternId?: string): UseCellEventsReturn {
           onText?.(event.message, event.duration);
           break;
       }
+    }
+
+    // After all events executed, trigger pause if needed
+    if (shouldPause) {
+      onPause?.();
+      return false; // Signal to pause TTS
     }
 
     return true; // Continue TTS

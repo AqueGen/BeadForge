@@ -817,6 +817,8 @@ export class TTSController {
           const shouldContinue = await this.onExecuteEvents(pos, 'before');
           if (!shouldContinue) {
             // Event requested pause (e.g., pause action)
+            // Move to next cell so resume starts from next position
+            this.currentIndex++;
             this.pause();
             return;
           }
@@ -837,6 +839,8 @@ export class TTSController {
             const shouldContinue = await this.onExecuteEvents(pos, 'after');
             if (!shouldContinue) {
               // Event requested pause (e.g., pause action after voicing)
+              // Move to next cell so resume starts from next position
+              this.currentIndex++;
               this.pause();
               return;
             }

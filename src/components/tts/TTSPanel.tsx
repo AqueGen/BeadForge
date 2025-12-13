@@ -58,7 +58,6 @@ export function TTSPanel({
     settings,
     play,
     pause,
-    stop,
     next,
     previous,
     goToPosition,
@@ -239,16 +238,12 @@ export function TTSPanel({
           e.preventDefault();
           previous();
           break;
-        case 'Escape':
-          e.preventDefault();
-          stop();
-          break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [state.isPlaying, play, pause, next, previous, stop]);
+  }, [state.isPlaying, play, pause, next, previous]);
 
   const handlePositionChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -390,17 +385,6 @@ export function TTSPanel({
                 <path d="M8 5v14l11-7z" />
               </svg>
             )}
-          </button>
-
-          {/* Stop */}
-          <button
-            onClick={stop}
-            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-            title={`${t.stop} (Esc)`}
-          >
-            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-              <rect x="6" y="6" width="12" height="12" />
-            </svg>
           </button>
 
           {/* Next */}
@@ -705,7 +689,7 @@ export function TTSPanel({
       {/* Keyboard shortcuts hint */}
       <div className="px-4 py-2 bg-gray-50 rounded-b-lg border-t">
         <p className="text-xs text-gray-500 text-center">
-          Space: Play/Pause • ←/→: Prev/Next • Esc: Stop
+          Space: Play/Pause • ←/→: Prev/Next
         </p>
       </div>
     </div>
