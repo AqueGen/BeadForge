@@ -180,11 +180,13 @@ export function groupBeadList(items: TTSBeadItem[]): TTSGroupedItem[] {
     colorName: items[0].colorName,
     count: 1,
     startPosition: items[0].position,
+    positions: [items[0].position],
   };
 
   for (let i = 1; i < items.length; i++) {
     if (items[i].colorIndex === current.colorIndex) {
       current.count++;
+      current.positions.push(items[i].position);
     } else {
       grouped.push(current);
       current = {
@@ -192,6 +194,7 @@ export function groupBeadList(items: TTSBeadItem[]): TTSGroupedItem[] {
         colorName: items[i].colorName,
         count: 1,
         startPosition: items[i].position,
+        positions: [items[i].position],
       };
     }
   }
@@ -758,6 +761,19 @@ export class TTSController {
     return 1;
   }
 
+  /**
+   * Get all positions for current item (for event execution in grouped mode)
+   * Returns array with single position for individual mode, all positions for grouped mode
+   */
+  private getCurrentPositions(): number[] {
+    if (this.settings.format === 'grouped') {
+      const item = this.groupedItems[this.currentIndex];
+      return item?.positions || [];
+    }
+    const item = this.items[this.currentIndex];
+    return item ? [item.position] : [];
+  }
+
   private getCurrentText(): string {
     if (this.settings.format === 'grouped') {
       const item = this.groupedItems[this.currentIndex];
@@ -790,20 +806,23 @@ export class TTSController {
 
     const text = this.getCurrentText();
     const position = this.getCurrentPosition();
+    const positions = this.getCurrentPositions(); // All positions for grouped mode
     const colorName = this.getCurrentColorName();
     const groupCount = this.getCurrentGroupCount();
 
-    // Execute cell events BEFORE voicing (if handler is set)
+    // Execute cell events BEFORE voicing for ALL positions in the group (if handler is set)
     if (this.onExecuteEvents) {
-      try {
-        const shouldContinue = await this.onExecuteEvents(position, 'before');
-        if (!shouldContinue) {
-          // Event requested pause (e.g., pause action)
-          this.pause();
-          return;
+      for (const pos of positions) {
+        try {
+          const shouldContinue = await this.onExecuteEvents(pos, 'before');
+          if (!shouldContinue) {
+            // Event requested pause (e.g., pause action)
+            this.pause();
+            return;
+          }
+        } catch (error) {
+          console.warn('[TTS] Error executing BEFORE events at position', pos, error);
         }
-      } catch (error) {
-        console.warn('[TTS] Error executing BEFORE events at position', position, error);
       }
     }
 
@@ -811,17 +830,19 @@ export class TTSController {
 
     // Handle auto mode with next after playback
     const handlePlaybackComplete = async () => {
-      // Execute cell events AFTER voicing (if handler is set)
+      // Execute cell events AFTER voicing for ALL positions in the group (if handler is set)
       if (this.onExecuteEvents) {
-        try {
-          const shouldContinue = await this.onExecuteEvents(position, 'after');
-          if (!shouldContinue) {
-            // Event requested pause (e.g., pause action after voicing)
-            this.pause();
-            return;
+        for (const pos of positions) {
+          try {
+            const shouldContinue = await this.onExecuteEvents(pos, 'after');
+            if (!shouldContinue) {
+              // Event requested pause (e.g., pause action after voicing)
+              this.pause();
+              return;
+            }
+          } catch (error) {
+            console.warn('[TTS] Error executing AFTER events at position', pos, error);
           }
-        } catch (error) {
-          console.warn('[TTS] Error executing AFTER events at position', position, error);
         }
       }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Volume2, Pause, Save, MessageSquare, Play } from 'lucide-react';
+import { X, Volume2, Pause, Save, MessageSquare, Play, Plus, Trash2 } from 'lucide-react';
 import type {
   CellEvent,
   CellEventType,
@@ -13,6 +13,7 @@ import {
   createSoundEvent,
   createActionEvent,
   createTextEvent,
+  getEventDisplayName,
 } from '@/types/cellEvents';
 import {
   getEventSoundsByCategory,
@@ -27,7 +28,7 @@ interface EventEditorModalProps {
   isOpen: boolean;
   position: number;
   editingEvent: CellEvent | null;
-  onSave: (event: CellEvent) => void;
+  onSave: (events: CellEvent | CellEvent[]) => void;
   onClose: () => void;
 }
 
@@ -50,11 +51,17 @@ export function EventEditorModal({
   const [textDuration, setTextDuration] = useState(5000);
   const [timing, setTiming] = useState<EventTiming>('before');
 
+  // Pending events list (for multi-add mode)
+  const [pendingEvents, setPendingEvents] = useState<CellEvent[]>([]);
+
   // Get sounds by category
   const techniqueSounds = getEventSoundsByCategory('technique');
   const signalSounds = getEventSoundsByCategory('signal');
 
-  // Initialize form when editing
+  // Check if we're in edit mode (editing existing event)
+  const isEditMode = editingEvent !== null;
+
+  // Initialize form when editing or opening
   useEffect(() => {
     if (editingEvent) {
       setEventType(editingEvent.type);
@@ -69,30 +76,73 @@ export function EventEditorModal({
         setTextDuration(editingEvent.duration || 5000);
       }
     } else {
-      // Reset to defaults for new event
-      setEventType('sound');
-      setSoundId('біп');
-      setActionType('pause');
-      setTextMessage('');
-      setTextDuration(5000);
-      setTiming('before');
+      // Reset to defaults for new events
+      resetForm();
+      setPendingEvents([]);
     }
   }, [editingEvent, isOpen]);
 
-  const handleSave = () => {
+  const resetForm = () => {
+    setEventType('sound');
+    setSoundId('біп');
+    setActionType('pause');
+    setTextMessage('');
+    setTextDuration(5000);
+    setTiming('before');
+  };
+
+  // Create event from current form state
+  const createEventFromForm = (): CellEvent | null => {
+    switch (eventType) {
+      case 'sound':
+        return createSoundEvent(soundId, timing);
+
+      case 'action':
+        return createActionEvent(actionType, timing);
+
+      case 'text':
+        if (!textMessage.trim()) {
+          return null;
+        }
+        return createTextEvent(textMessage.trim(), textDuration, timing);
+
+      default:
+        return null;
+    }
+  };
+
+  // Handle adding event to pending list
+  const handleAddToPending = () => {
+    const event = createEventFromForm();
+    if (!event) {
+      if (eventType === 'text') {
+        alert('Введіть текст повідомлення');
+      }
+      return;
+    }
+
+    setPendingEvents((prev) => [...prev, event]);
+    resetForm();
+  };
+
+  // Handle removing event from pending list
+  const handleRemoveFromPending = (eventId: string) => {
+    setPendingEvents((prev) => prev.filter((e) => e.id !== eventId));
+  };
+
+  // Handle saving (edit mode - single event)
+  const handleSaveEdit = () => {
+    if (!editingEvent) return;
+
     let event: CellEvent;
 
     switch (eventType) {
       case 'sound':
-        event = editingEvent?.type === 'sound'
-          ? { ...editingEvent, soundId, timing }
-          : createSoundEvent(soundId, timing);
+        event = { ...editingEvent, soundId, timing } as CellEvent;
         break;
 
       case 'action':
-        event = editingEvent?.type === 'action'
-          ? { ...editingEvent, actionType, timing }
-          : createActionEvent(actionType, timing);
+        event = { ...editingEvent, actionType, timing } as CellEvent;
         break;
 
       case 'text':
@@ -100,9 +150,7 @@ export function EventEditorModal({
           alert('Введіть текст повідомлення');
           return;
         }
-        event = editingEvent?.type === 'text'
-          ? { ...editingEvent, message: textMessage.trim(), duration: textDuration, timing }
-          : createTextEvent(textMessage.trim(), textDuration, timing);
+        event = { ...editingEvent, message: textMessage.trim(), duration: textDuration, timing } as CellEvent;
         break;
 
       default:
@@ -110,6 +158,25 @@ export function EventEditorModal({
     }
 
     onSave(event);
+    onClose();
+  };
+
+  // Handle saving all pending events
+  const handleSaveAll = () => {
+    // If there's something in the form, add it first
+    const currentEvent = createEventFromForm();
+
+    const eventsToSave = [...pendingEvents];
+    if (currentEvent) {
+      eventsToSave.push(currentEvent);
+    }
+
+    if (eventsToSave.length === 0) {
+      alert('Додайте хоча б одну подію');
+      return;
+    }
+
+    onSave(eventsToSave);
     onClose();
   };
 
@@ -132,11 +199,11 @@ export function EventEditorModal({
       />
 
       {/* Modal */}
-      <div className="relative bg-slate-800 rounded-lg shadow-xl border border-slate-700 w-full max-w-md mx-4">
+      <div className="relative bg-slate-800 rounded-lg shadow-xl border border-slate-700 w-full max-w-md mx-4 max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-700">
+        <div className="flex items-center justify-between p-4 border-b border-slate-700 shrink-0">
           <h2 className="text-lg font-semibold text-slate-100">
-            {editingEvent ? 'Редагувати подію' : 'Додати подію'}
+            {isEditMode ? 'Редагувати подію' : 'Додати події'}
           </h2>
           <div className="flex items-center gap-2">
             <span className="text-sm text-slate-400">
@@ -151,8 +218,47 @@ export function EventEditorModal({
           </div>
         </div>
 
-        {/* Content */}
-        <div className="p-4 space-y-4">
+        {/* Content - scrollable */}
+        <div className="p-4 space-y-4 overflow-y-auto flex-1">
+          {/* Pending events list (only in add mode) */}
+          {!isEditMode && pendingEvents.length > 0 && (
+            <div className="bg-slate-900/50 rounded-lg p-3 border border-slate-600">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-slate-400">
+                  Додані події ({pendingEvents.length})
+                </span>
+              </div>
+              <div className="space-y-1">
+                {pendingEvents.map((event) => (
+                  <div
+                    key={event.id}
+                    className="flex items-center gap-2 p-2 bg-slate-800 rounded border border-slate-700"
+                  >
+                    <span className="flex-1 text-xs text-slate-300 truncate">
+                      {getEventDisplayName(event)}
+                    </span>
+                    <button
+                      onClick={() => handleRemoveFromPending(event.id)}
+                      className="p-1 text-slate-500 hover:text-red-400 rounded hover:bg-slate-700"
+                      title="Видалити"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Form section header (only in add mode) */}
+          {!isEditMode && pendingEvents.length > 0 && (
+            <div className="border-t border-slate-700 pt-4">
+              <span className="text-xs font-medium text-slate-400">
+                Додати ще одну подію:
+              </span>
+            </div>
+          )}
+
           {/* Event type selector */}
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-2">
@@ -431,25 +537,69 @@ export function EventEditorModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 p-4 border-t border-slate-700">
-          <button
-            onClick={onClose}
-            className="
-              px-4 py-2 text-sm text-slate-300
-              hover:bg-slate-700 rounded-lg transition-colors
-            "
-          >
-            Скасувати
-          </button>
-          <button
-            onClick={handleSave}
-            className="
-              px-4 py-2 text-sm text-white bg-blue-600
-              hover:bg-blue-500 rounded-lg transition-colors
-            "
-          >
-            {editingEvent ? 'Зберегти' : 'Додати'}
-          </button>
+        <div className="flex items-center justify-between gap-2 p-4 border-t border-slate-700 shrink-0">
+          {isEditMode ? (
+            // Edit mode - simple save/cancel
+            <>
+              <div />
+              <div className="flex gap-2">
+                <button
+                  onClick={onClose}
+                  className="
+                    px-4 py-2 text-sm text-slate-300
+                    hover:bg-slate-700 rounded-lg transition-colors
+                  "
+                >
+                  Скасувати
+                </button>
+                <button
+                  onClick={handleSaveEdit}
+                  className="
+                    px-4 py-2 text-sm text-white bg-blue-600
+                    hover:bg-blue-500 rounded-lg transition-colors
+                  "
+                >
+                  Зберегти
+                </button>
+              </div>
+            </>
+          ) : (
+            // Add mode - add more + save all
+            <>
+              <button
+                onClick={handleAddToPending}
+                className="
+                  flex items-center gap-1.5 px-3 py-2 text-sm text-slate-300
+                  border border-slate-600 hover:border-slate-500
+                  hover:bg-slate-700 rounded-lg transition-colors
+                "
+              >
+                <Plus size={16} />
+                Ще одну
+              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={onClose}
+                  className="
+                    px-4 py-2 text-sm text-slate-300
+                    hover:bg-slate-700 rounded-lg transition-colors
+                  "
+                >
+                  Скасувати
+                </button>
+                <button
+                  onClick={handleSaveAll}
+                  className="
+                    flex items-center gap-1.5 px-4 py-2 text-sm text-white bg-blue-600
+                    hover:bg-blue-500 rounded-lg transition-colors
+                  "
+                >
+                  <Save size={16} />
+                  Зберегти {pendingEvents.length > 0 ? `(${pendingEvents.length + 1})` : ''}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

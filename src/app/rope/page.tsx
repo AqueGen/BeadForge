@@ -901,19 +901,24 @@ export default function RopeEditorPage() {
               ? cellEvents.getEventsAtPosition(cellEvents.editorState.position)[cellEvents.editorState.editingEventIndex] ?? null
               : null
           }
-          onSave={(event) => {
+          onSave={(eventOrEvents) => {
             const pos = cellEvents.editorState.position;
             const editIdx = cellEvents.editorState.editingEventIndex;
             if (pos !== null) {
-              if (editIdx !== null) {
-                // Update existing event
+              // Handle array of events (multi-add mode)
+              if (Array.isArray(eventOrEvents)) {
+                for (const event of eventOrEvents) {
+                  cellEvents.actions.addEvent(pos, event);
+                }
+              } else if (editIdx !== null) {
+                // Update existing event (edit mode)
                 const existingEvents = cellEvents.getEventsAtPosition(pos);
                 if (existingEvents[editIdx]) {
-                  cellEvents.actions.updateEvent(pos, existingEvents[editIdx].id, event);
+                  cellEvents.actions.updateEvent(pos, existingEvents[editIdx].id, eventOrEvents);
                 }
               } else {
-                // Add new event
-                cellEvents.actions.addEvent(pos, event);
+                // Add single new event
+                cellEvents.actions.addEvent(pos, eventOrEvents);
               }
             }
             cellEvents.actions.closeEditor();

@@ -273,6 +273,7 @@ export interface TTSGroupedItem {
   colorName: string;
   count: number;
   startPosition: number;
+  positions: number[]; // All positions in this group (for event execution)
 }
 
 export const DEFAULT_TTS_SETTINGS: TTSSettings = {
