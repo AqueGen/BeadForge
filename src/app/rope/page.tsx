@@ -11,6 +11,8 @@ import { CanvasPanel } from '@/components/editor/CanvasPanel';
 import { ColorMappingPanel } from '@/components/editor/ColorMappingPanel';
 import { TTSPanel } from '@/components/tts';
 import { ConfirmDialog, StatsModal, type StatsModalData } from '@/components/ui/Modals';
+import { PDFExportModal } from '@/components/pdf';
+import { BeadingPanel } from '@/components/beading';
 import { EventToast, useEventToast, EventsPanel, EventEditorModal, CheckpointRestoreDialog } from '@/components/events';
 import { usePattern } from '@/hooks/usePattern';
 import { useColorMapping } from '@/hooks/useColorMapping';
@@ -102,6 +104,8 @@ export default function RopeEditorPage() {
   const [highlightedBeads, setHighlightedBeads] = useState<HighlightedBeads | null>(null);
   const [completedBeads, setCompletedBeads] = useState(0);
   const [ttsNavigationMode, setTtsNavigationMode] = useState(false);
+  const [ttsCurrentPosition, setTtsCurrentPosition] = useState<number | undefined>(undefined);
+  const [ttsIsPlaying, setTtsIsPlaying] = useState(false);
   const [editModeEnabled, setEditModeEnabled] = useState(false);
   const [ttsNavigateTarget, setTtsNavigateTarget] = useState<number | null>(null);
   // Sidebar mode: 'collapsed' | 'edit' | 'events' | 'examples'
@@ -110,11 +114,13 @@ export default function RopeEditorPage() {
   const [brickOffset, setBrickOffset] = useState(0.5); // Default: half bead shift
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showStatsModal, setShowStatsModal] = useState(false);
+  const [showPDFExportModal, setShowPDFExportModal] = useState(false);
   const [panelVisibility, setPanelVisibility] = useState<PanelVisibility>({
     draft: true,
     corrected: true,
     simulation: true,
     tts: true,
+    beading: false,
   });
   const [replaceMode, setReplaceMode] = useState<number | null>(null); // color index to replace
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -381,6 +387,10 @@ export default function RopeEditorPage() {
 
   const handleTTSStateChange = useCallback(
     (position: number, groupCount: number, isActive: boolean) => {
+      // Update TTS position for BeadingPanel sync
+      setTtsCurrentPosition(position);
+      setTtsIsPlaying(isActive);
+
       if (isActive && position > 0 && groupCount > 0) {
         const highlighted = getHighlightedBeads(pattern, position, groupCount);
         setHighlightedBeads(highlighted);
@@ -446,6 +456,7 @@ export default function RopeEditorPage() {
         colorMappingHasWarning={colorMapping.hasDuplicateMappings}
         colorMappingWarningCount={colorMapping.duplicateMappingCount}
         onColorMappingClick={() => setShowColorMappingPanel(true)}
+        onExportPDF={() => setShowPDFExportModal(true)}
         panelVisibility={panelVisibility}
         onPanelVisibilityChange={handlePanelVisibilityChange}
       />
@@ -832,6 +843,18 @@ export default function RopeEditorPage() {
             />
           </aside>
         )}
+
+        {/* Beading Panel */}
+        {panelVisibility.beading && (
+          <aside className="w-96 shrink-0 border-l bg-white">
+            <BeadingPanel
+              pattern={pattern}
+              ttsPosition={ttsCurrentPosition}
+              ttsPlaying={ttsIsPlaying}
+              onRowClick={(row) => setTtsNavigateTarget(row * pattern.width)}
+            />
+          </aside>
+        )}
       </div>
 
       {/* New Pattern Dialog */}
@@ -873,6 +896,13 @@ export default function RopeEditorPage() {
         isOpen={showStatsModal}
         onClose={() => setShowStatsModal(false)}
         stats={patternStats}
+      />
+
+      {/* PDF Export Modal */}
+      <PDFExportModal
+        isOpen={showPDFExportModal}
+        onClose={() => setShowPDFExportModal(false)}
+        pattern={pattern}
       />
 
       {/* Delete Color Confirmation Dialog */}

@@ -10,6 +10,7 @@ export interface PanelVisibility {
   corrected: boolean;
   simulation: boolean;
   tts: boolean;
+  beading: boolean;
 }
 
 interface ToolbarProps {
@@ -26,6 +27,7 @@ interface ToolbarProps {
   onShowStats: () => void;
   onSaveJBB?: () => void;
   onLoadJBB?: (file: File) => void;
+  onExportPDF?: () => void;
   // Color mapping props
   showColorMapping?: boolean;
   colorMappingHasWarning?: boolean;
@@ -98,6 +100,7 @@ export const Toolbar: FC<ToolbarProps> = ({
   onShowStats,
   onSaveJBB,
   onLoadJBB,
+  onExportPDF,
   showColorMapping,
   colorMappingHasWarning,
   colorMappingWarningCount,
@@ -234,11 +237,16 @@ export const Toolbar: FC<ToolbarProps> = ({
         </ToolButton>
       </ToolbarGroup>
 
-      {/* Stats */}
+      {/* Stats & Export */}
       <div className="flex gap-1">
         <ToolButton onClick={onShowStats} title="Показати статистику">
           📊
         </ToolButton>
+        {onExportPDF && (
+          <ToolButton onClick={onExportPDF} title="Експорт у PDF">
+            🖨️
+          </ToolButton>
+        )}
       </div>
 
       {/* Color Mapping */}
@@ -282,6 +290,13 @@ export const Toolbar: FC<ToolbarProps> = ({
             title="Показати/сховати TTS панель"
           >
             🔊
+          </ToggleButton>
+          <ToggleButton
+            active={panelVisibility.beading}
+            onClick={() => onPanelVisibilityChange('beading')}
+            title="Показати/сховати панель набору"
+          >
+            📋
           </ToggleButton>
         </div>
       )}
