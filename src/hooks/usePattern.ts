@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import type { BeadPattern, PatternStats } from '@/types';
+import type { BeadPattern, PatternStats, BeadColor } from '@/types';
 import {
   createPattern,
   setBead as setBeadFn,
@@ -34,6 +34,7 @@ export interface UsePatternReturn {
     getStats: () => PatternStats;
     saveJBB: () => void;
     loadJBB: (file: File) => Promise<void>;
+    addColor: (color: BeadColor) => number;
   };
 }
 
@@ -148,6 +149,19 @@ export function usePattern(
     saveToStorage(loaded);
   }, []);
 
+  // Add a new color to the pattern palette, returns new color index
+  const addColor = useCallback((color: BeadColor): number => {
+    let newIndex = -1;
+    setPattern((prev) => {
+      newIndex = prev.colors.length;
+      return {
+        ...prev,
+        colors: [...prev.colors, color],
+      };
+    });
+    return newIndex;
+  }, []);
+
   const actions = useMemo(
     () => ({
       setBead,
@@ -162,8 +176,9 @@ export function usePattern(
       getStats,
       saveJBB,
       loadJBB: loadJBBFile,
+      addColor,
     }),
-    [setBead, floodFill, clear, mirrorH, mirrorV, save, load, loadSample, reset, getStats, saveJBB, loadJBBFile]
+    [setBead, floodFill, clear, mirrorH, mirrorV, save, load, loadSample, reset, getStats, saveJBB, loadJBBFile, addColor]
   );
 
   return { pattern, actions };

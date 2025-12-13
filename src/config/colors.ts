@@ -80,15 +80,13 @@ export const COLOR_PALETTE: ColorDefinition[] = [
     rgb: { r: 255, g: 255, b: 0 },
     isFree: true,
   },
-
-  // === PAID TIER (10 additional colors) ===
   {
     index: 6,
     key: 'orange',
     nameUk: 'Помаранчевий',
     nameRu: 'Оранжевый',
     rgb: { r: 255, g: 165, b: 0 },
-    isFree: false,
+    isFree: true,
   },
   {
     index: 7,
@@ -96,7 +94,7 @@ export const COLOR_PALETTE: ColorDefinition[] = [
     nameUk: 'Фіолетовий',
     nameRu: 'Фиолетовый',
     rgb: { r: 128, g: 0, b: 128 },
-    isFree: false,
+    isFree: true,
   },
   {
     index: 8,
@@ -104,7 +102,7 @@ export const COLOR_PALETTE: ColorDefinition[] = [
     nameUk: 'Рожевий',
     nameRu: 'Розовый',
     rgb: { r: 255, g: 192, b: 203 },
-    isFree: false,
+    isFree: true,
   },
   {
     index: 9,
@@ -112,7 +110,7 @@ export const COLOR_PALETTE: ColorDefinition[] = [
     nameUk: 'Коричневий',
     nameRu: 'Коричневый',
     rgb: { r: 139, g: 69, b: 19 },
-    isFree: false,
+    isFree: true,
   },
   {
     index: 10,
@@ -120,7 +118,7 @@ export const COLOR_PALETTE: ColorDefinition[] = [
     nameUk: 'Сірий',
     nameRu: 'Серый',
     rgb: { r: 128, g: 128, b: 128 },
-    isFree: false,
+    isFree: true,
   },
   {
     index: 11,
@@ -128,7 +126,7 @@ export const COLOR_PALETTE: ColorDefinition[] = [
     nameUk: 'Блакитний',
     nameRu: 'Голубой',
     rgb: { r: 135, g: 206, b: 235 },
-    isFree: false,
+    isFree: true,
   },
   {
     index: 12,
@@ -136,7 +134,7 @@ export const COLOR_PALETTE: ColorDefinition[] = [
     nameUk: 'Бірюзовий',
     nameRu: 'Бирюзовый',
     rgb: { r: 0, g: 206, b: 209 },
-    isFree: false,
+    isFree: true,
   },
   {
     index: 13,
@@ -144,7 +142,7 @@ export const COLOR_PALETTE: ColorDefinition[] = [
     nameUk: 'Бежевий',
     nameRu: 'Бежевый',
     rgb: { r: 245, g: 245, b: 220 },
-    isFree: false,
+    isFree: true,
   },
   {
     index: 14,
@@ -152,7 +150,7 @@ export const COLOR_PALETTE: ColorDefinition[] = [
     nameUk: 'Золотий',
     nameRu: 'Золотой',
     rgb: { r: 255, g: 215, b: 0 },
-    isFree: false,
+    isFree: true,
   },
   {
     index: 15,
@@ -160,7 +158,7 @@ export const COLOR_PALETTE: ColorDefinition[] = [
     nameUk: 'Срібний',
     nameRu: 'Серебряный',
     rgb: { r: 192, g: 192, b: 192 },
-    isFree: false,
+    isFree: true,
   },
 ];
 

@@ -13,7 +13,7 @@ import { ConfirmDialog, StatsModal, type StatsModalData } from '@/components/ui/
 import { usePattern } from '@/hooks/usePattern';
 import { useColorMapping } from '@/hooks/useColorMapping';
 import { getSamplePatternList, getHighlightedBeads } from '@/lib/pattern';
-import { DEFAULT_COLORS, SKIP_COLOR_INDEX, type DrawingTool, type HighlightedBeads } from '@/types';
+import { SKIP_COLOR_INDEX, type DrawingTool, type HighlightedBeads } from '@/types';
 
 const SAMPLE_PATTERNS = getSamplePatternList();
 
@@ -200,7 +200,7 @@ export default function RopeEditorPage() {
     // Build color distribution
     stats.colorCount = colorCounts.size;
     colorCounts.forEach((count, colorIndex) => {
-      const color = DEFAULT_COLORS[colorIndex];
+      const color = pattern.colors[colorIndex];
       if (color) {
         stats.colorDistribution.push({
           name: color.name || `Колір ${colorIndex}`,
@@ -450,9 +450,13 @@ export default function RopeEditorPage() {
                   <span>Пропуск</span>
                 </button>
                 <ColorPalette
-                  colors={DEFAULT_COLORS}
+                  colors={pattern.colors}
                   selectedColor={selectedColor}
                   onColorSelect={setSelectedColor}
+                  onCustomColorAdd={(color) => {
+                    const newIndex = actions.addColor(color);
+                    setSelectedColor(newIndex);
+                  }}
                 />
               </div>
 
@@ -483,8 +487,13 @@ export default function RopeEditorPage() {
                   Розмір: {pattern.width} × {pattern.height}
                 </p>
                 <p className="text-xs text-gray-600">
-                  Колір: {selectedColor === SKIP_COLOR_INDEX ? 'Пропуск' : (DEFAULT_COLORS[selectedColor]?.name || `#${selectedColor}`)}
+                  Колір: {selectedColor === SKIP_COLOR_INDEX ? 'Пропуск' : (pattern.colors[selectedColor]?.name || `#${selectedColor}`)}
                 </p>
+                {selectedColor !== SKIP_COLOR_INDEX && pattern.colors[selectedColor] && (
+                  <p className="text-xs text-gray-600 font-mono">
+                    RGB: {pattern.colors[selectedColor].r}, {pattern.colors[selectedColor].g}, {pattern.colors[selectedColor].b}
+                  </p>
+                )}
               </div>
             </div>
           )}
