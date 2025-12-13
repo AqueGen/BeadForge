@@ -84,13 +84,38 @@ export interface EditorSettings {
   rowMarkerInterval: number;
 }
 
+/** Selection mode for different selection tools */
+export type SelectionMode = 'rectangle' | 'freeform';
+
+/** Selection state */
 export interface Selection {
+  /** Bounding box */
   x: number;
   y: number;
   width: number;
   height: number;
+  /** Selected cell data (color indices) */
   data?: Uint8Array;
+  /** For freeform selection: mask of selected cells (1 = selected, 0 = not) */
+  mask?: Uint8Array;
+  /** Selection mode used */
+  mode: SelectionMode;
 }
+
+/** Clipboard for copy/cut operations */
+export interface SelectionClipboard {
+  /** Width of copied area */
+  width: number;
+  /** Height of copied area */
+  height: number;
+  /** Cell data (color indices) */
+  data: Uint8Array;
+  /** Mask for freeform selections */
+  mask?: Uint8Array;
+}
+
+/** Selection operation types */
+export type SelectionOperation = 'copy' | 'cut' | 'paste' | 'flipH' | 'flipV' | 'rotate90' | 'rotate180' | 'clear';
 
 export interface Point {
   x: number;

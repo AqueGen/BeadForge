@@ -1,7 +1,7 @@
 'use client';
 
 import { FC, useRef, useEffect, useState, useCallback } from 'react';
-import type { BeadPattern, ViewType, HighlightedBeads } from '@/types';
+import type { BeadPattern, ViewType, HighlightedBeads, Selection, SelectionMode, Point, DrawingTool } from '@/types';
 import { SKIP_COLOR_INDEX, EMPTY_COLOR_INDEX } from '@/types';
 import { colorToRgba } from '@/lib/utils';
 import { positionToCoordinates, getUsedHeight } from '@/lib/pattern';
@@ -34,6 +34,27 @@ interface CanvasPanelProps {
   // Synchronized scrolling props
   scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
   onScroll?: (scrollTop: number, scrollLeft: number) => void;
+  // Selection support
+  /** Current drawing tool */
+  tool?: DrawingTool;
+  /** Current selection state */
+  selection?: Selection | null;
+  /** Whether currently selecting */
+  isSelecting?: boolean;
+  /** Selection mode (rectangle or freeform) */
+  selectionMode?: SelectionMode;
+  /** Points for freeform selection */
+  freeformPoints?: Point[];
+  /** Selection callbacks */
+  onSelectionStart?: (x: number, y: number) => void;
+  onSelectionUpdate?: (x: number, y: number) => void;
+  onSelectionEnd?: () => void;
+  onFreeformPointAdd?: (x: number, y: number) => void;
+  onFreeformSelectionClose?: () => void;
+  /** Paste position support */
+  hasClipboard?: boolean;
+  pastePosition?: Point | null;
+  onPastePositionSet?: (x: number, y: number) => void;
 }
 
 export const CanvasPanel: FC<CanvasPanelProps> = ({
@@ -53,6 +74,20 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
   onEventPositionClick: _onEventPositionClick,
   scrollContainerRef,
   onScroll,
+  // Selection props
+  tool,
+  selection,
+  isSelecting: isSelectingProp,
+  selectionMode = 'rectangle',
+  freeformPoints = [],
+  onSelectionStart,
+  onSelectionUpdate,
+  onSelectionEnd,
+  onFreeformPointAdd,
+  onFreeformSelectionClose,
+  hasClipboard,
+  pastePosition,
+  onPastePositionSet,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const internalScrollRef = useRef<HTMLDivElement>(null);
@@ -137,7 +172,21 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
     } else {
       renderSimulation(ctx, pattern, zoom, shift, brickOffset);
     }
-  }, [pattern, zoom, viewType, shift, brickOffset, highlightedBeads, completedBeads, eventPositions]);
+
+    // Render selection overlay (only in draft view for now)
+    if (viewType === 'draft') {
+      if (selection) {
+        renderSelection(ctx, selection, pattern.height, zoom);
+      }
+      if (freeformPoints.length > 0) {
+        renderFreeformPath(ctx, freeformPoints, pattern.height, zoom);
+      }
+      // Render paste position preview
+      if (hasClipboard && pastePosition) {
+        renderPastePreview(ctx, pastePosition, pattern.height, zoom);
+      }
+    }
+  }, [pattern, zoom, viewType, shift, brickOffset, highlightedBeads, completedBeads, eventPositions, selection, freeformPoints, hasClipboard, pastePosition]);
 
   const getGridPosition = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -194,12 +243,33 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
       if (viewType !== 'draft' && viewType !== 'corrected') return;
 
       const pos = getGridPosition(e);
-      if (pos && onBeadClick) {
+      if (!pos) return;
+
+      // Handle selection mode
+      if (tool === 'select' && viewType === 'draft') {
+        // If clipboard exists, clicking sets paste position instead of starting new selection
+        if (hasClipboard && onPastePositionSet) {
+          onPastePositionSet(pos.x, pos.y);
+          return;
+        }
+
+        if (selectionMode === 'freeform') {
+          // For freeform: start collecting points
+          onSelectionStart?.(pos.x, pos.y);
+        } else {
+          // For rectangle: start selection
+          onSelectionStart?.(pos.x, pos.y);
+        }
+        return;
+      }
+
+      // Regular drawing
+      if (onBeadClick) {
         onBeadClick(pos.x, pos.y);
         setIsDrawing(true);
       }
     },
-    [viewType, getGridPosition, onBeadClick, onShiftChange, shift]
+    [viewType, getGridPosition, onBeadClick, onShiftChange, shift, tool, selectionMode, onSelectionStart, hasClipboard, onPastePositionSet]
   );
 
   const handleMouseMove = useCallback(
@@ -214,6 +284,19 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
         return;
       }
 
+      // Handle selection mode
+      if (tool === 'select' && viewType === 'draft' && isSelectingProp) {
+        const pos = getGridPosition(e);
+        if (!pos) return;
+
+        if (selectionMode === 'rectangle') {
+          onSelectionUpdate?.(pos.x, pos.y);
+        } else if (selectionMode === 'freeform') {
+          onFreeformPointAdd?.(pos.x, pos.y);
+        }
+        return;
+      }
+
       // Allow dragging on draft and corrected views
       if (!isDrawing || (viewType !== 'draft' && viewType !== 'corrected')) return;
 
@@ -222,13 +305,22 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
         onBeadDrag(pos.x, pos.y);
       }
     },
-    [isDrawing, isDraggingShift, viewType, getGridPosition, onBeadDrag, onShiftChange, dragStartX, dragStartShift, zoom]
+    [isDrawing, isDraggingShift, viewType, getGridPosition, onBeadDrag, onShiftChange, dragStartX, dragStartShift, zoom, tool, isSelectingProp, selectionMode, onSelectionUpdate, onFreeformPointAdd]
   );
 
   const handleMouseUp = useCallback(() => {
+    // Handle selection end
+    if (tool === 'select' && viewType === 'draft' && isSelectingProp) {
+      if (selectionMode === 'rectangle') {
+        onSelectionEnd?.();
+      } else if (selectionMode === 'freeform') {
+        onFreeformSelectionClose?.();
+      }
+    }
+
     setIsDrawing(false);
     setIsDraggingShift(false);
-  }, []);
+  }, [tool, viewType, isSelectingProp, selectionMode, onSelectionEnd, onFreeformSelectionClose]);
 
   return (
     <div className="relative flex flex-1 flex-col overflow-hidden rounded-lg bg-white shadow">
@@ -272,7 +364,9 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
           ref={canvasRef}
           className={
             viewType === 'draft' || viewType === 'corrected'
-              ? 'cursor-crosshair'
+              ? tool === 'select'
+                ? 'cursor-cell'
+                : 'cursor-crosshair'
               : viewType === 'simulation'
                 ? 'cursor-grab active:cursor-grabbing'
                 : 'cursor-default'
@@ -625,4 +719,140 @@ function renderEventMarkers(
       ctx.fill();
     }
   }
+}
+
+/**
+ * Render selection rectangle with dashed border
+ */
+function renderSelection(
+  ctx: CanvasRenderingContext2D,
+  selection: Selection,
+  patternHeight: number,
+  zoom: number
+) {
+  const screenX = selection.x * zoom;
+  const screenY = (patternHeight - 1 - (selection.y + selection.height - 1)) * zoom;
+  const width = selection.width * zoom;
+  const height = selection.height * zoom;
+
+  // Draw semi-transparent fill
+  ctx.fillStyle = 'rgba(59, 130, 246, 0.15)'; // Blue with transparency
+  ctx.fillRect(screenX, screenY, width, height);
+
+  // Draw dashed border
+  ctx.save();
+  ctx.strokeStyle = '#3b82f6'; // Blue
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 3]);
+  ctx.strokeRect(screenX, screenY, width, height);
+  ctx.restore();
+
+  // Draw corner handles if selection is complete (has data)
+  if (selection.data) {
+    const handleSize = 6;
+    ctx.fillStyle = '#3b82f6';
+
+    // Top-left
+    ctx.fillRect(screenX - handleSize / 2, screenY - handleSize / 2, handleSize, handleSize);
+    // Top-right
+    ctx.fillRect(screenX + width - handleSize / 2, screenY - handleSize / 2, handleSize, handleSize);
+    // Bottom-left
+    ctx.fillRect(screenX - handleSize / 2, screenY + height - handleSize / 2, handleSize, handleSize);
+    // Bottom-right
+    ctx.fillRect(screenX + width - handleSize / 2, screenY + height - handleSize / 2, handleSize, handleSize);
+  }
+
+  // If freeform mode with mask, highlight only masked cells
+  if (selection.mode === 'freeform' && selection.mask) {
+    ctx.fillStyle = 'rgba(59, 130, 246, 0.25)';
+    for (let dy = 0; dy < selection.height; dy++) {
+      for (let dx = 0; dx < selection.width; dx++) {
+        if (selection.mask[dy * selection.width + dx] === 1) {
+          const cellX = (selection.x + dx) * zoom;
+          const cellY = (patternHeight - 1 - (selection.y + dy)) * zoom;
+          ctx.fillRect(cellX, cellY, zoom - 1, zoom - 1);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Render freeform selection path as user draws
+ */
+function renderFreeformPath(
+  ctx: CanvasRenderingContext2D,
+  points: Point[],
+  patternHeight: number,
+  zoom: number
+) {
+  if (points.length < 1) return;
+
+  ctx.save();
+  ctx.strokeStyle = '#3b82f6'; // Blue
+  ctx.lineWidth = 2;
+  ctx.setLineDash([4, 2]);
+
+  ctx.beginPath();
+  const firstPoint = points[0];
+  const startX = firstPoint.x * zoom + zoom / 2;
+  const startY = (patternHeight - 1 - firstPoint.y) * zoom + zoom / 2;
+  ctx.moveTo(startX, startY);
+
+  for (let i = 1; i < points.length; i++) {
+    const point = points[i];
+    const x = point.x * zoom + zoom / 2;
+    const y = (patternHeight - 1 - point.y) * zoom + zoom / 2;
+    ctx.lineTo(x, y);
+  }
+
+  // Close the path to first point
+  ctx.lineTo(startX, startY);
+  ctx.stroke();
+
+  // Draw points
+  ctx.fillStyle = '#3b82f6';
+  for (const point of points) {
+    const x = point.x * zoom + zoom / 2;
+    const y = (patternHeight - 1 - point.y) * zoom + zoom / 2;
+    ctx.beginPath();
+    ctx.arc(x, y, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+/**
+ * Render paste position preview indicator
+ */
+function renderPastePreview(
+  ctx: CanvasRenderingContext2D,
+  position: Point,
+  patternHeight: number,
+  zoom: number
+) {
+  const screenX = position.x * zoom;
+  const screenY = (patternHeight - 1 - position.y) * zoom;
+
+  // Draw green crosshair at paste position
+  ctx.save();
+  ctx.strokeStyle = '#22c55e'; // Green
+  ctx.lineWidth = 2;
+
+  // Draw crosshair
+  const size = zoom * 1.5;
+  ctx.beginPath();
+  ctx.moveTo(screenX + zoom / 2 - size, screenY + zoom / 2);
+  ctx.lineTo(screenX + zoom / 2 + size, screenY + zoom / 2);
+  ctx.moveTo(screenX + zoom / 2, screenY + zoom / 2 - size);
+  ctx.lineTo(screenX + zoom / 2, screenY + zoom / 2 + size);
+  ctx.stroke();
+
+  // Draw circle
+  ctx.beginPath();
+  ctx.arc(screenX + zoom / 2, screenY + zoom / 2, size * 0.7, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.restore();
 }

@@ -139,7 +139,7 @@ export function copyRegion(
     }
   }
 
-  return { x, y, width, height, data };
+  return { x, y, width, height, data, mode: 'rectangle' };
 }
 
 /**

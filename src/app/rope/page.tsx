@@ -17,6 +17,7 @@ import { EventToast, useEventToast, EventsPanel, EventEditorModal, CheckpointRes
 import { usePattern } from '@/hooks/usePattern';
 import { useColorMapping } from '@/hooks/useColorMapping';
 import { useCellEvents } from '@/hooks/useCellEvents';
+import { useSelection } from '@/hooks/useSelection';
 import { getSamplePatternList, getHighlightedBeads } from '@/lib/pattern';
 import { SKIP_COLOR_INDEX, EMPTY_COLOR_INDEX, type DrawingTool, type HighlightedBeads } from '@/types';
 
@@ -177,6 +178,47 @@ export default function RopeEditorPage() {
 
   // Color mapping hook
   const colorMapping = useColorMapping(pattern);
+
+  // Selection hook
+  const selectionHook = useSelection();
+
+  // Keyboard shortcuts for clipboard operations (Ctrl+C, Ctrl+X, Ctrl+V)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle when Ctrl is pressed
+      if (!e.ctrlKey && !e.metaKey) return;
+
+      // Only handle when select tool is active and edit mode is enabled
+      if (tool !== 'select' || !editModeEnabled) return;
+
+      switch (e.key.toLowerCase()) {
+        case 'c':
+          // Copy
+          if (selectionHook.hasSelection) {
+            e.preventDefault();
+            selectionHook.copy(pattern);
+          }
+          break;
+        case 'x':
+          // Cut
+          if (selectionHook.hasSelection) {
+            e.preventDefault();
+            selectionHook.cut(pattern, actions.setBead);
+          }
+          break;
+        case 'v':
+          // Paste
+          if (selectionHook.hasClipboard) {
+            e.preventDefault();
+            selectionHook.paste(pattern, actions.setBead);
+          }
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [tool, editModeEnabled, selectionHook, pattern, actions]);
 
   // Get event positions for canvas visualization
   const eventPositions = useMemo(() => {
@@ -561,7 +603,7 @@ export default function RopeEditorPage() {
                 </h3>
                 <div className="flex gap-1">
                   <button
-                    onClick={() => setTool('pencil')}
+                    onClick={() => { setTool('pencil'); selectionHook.clearSelection(); }}
                     className={`flex-1 rounded px-2 py-1.5 text-xs transition-colors ${
                       tool === 'pencil'
                         ? 'bg-primary-500 text-white'
@@ -572,7 +614,7 @@ export default function RopeEditorPage() {
                     ✏️
                   </button>
                   <button
-                    onClick={() => setTool('fill')}
+                    onClick={() => { setTool('fill'); selectionHook.clearSelection(); }}
                     className={`flex-1 rounded px-2 py-1.5 text-xs transition-colors ${
                       tool === 'fill'
                         ? 'bg-primary-500 text-white'
@@ -583,7 +625,7 @@ export default function RopeEditorPage() {
                     🪣
                   </button>
                   <button
-                    onClick={() => setTool('pipette')}
+                    onClick={() => { setTool('pipette'); selectionHook.clearSelection(); }}
                     className={`flex-1 rounded px-2 py-1.5 text-xs transition-colors ${
                       tool === 'pipette'
                         ? 'bg-primary-500 text-white'
@@ -593,8 +635,163 @@ export default function RopeEditorPage() {
                   >
                     💧
                   </button>
+                  <button
+                    onClick={() => setTool('select')}
+                    className={`flex-1 rounded px-2 py-1.5 text-xs transition-colors ${
+                      tool === 'select'
+                        ? 'bg-primary-500 text-white'
+                        : 'bg-gray-100 hover:bg-gray-200'
+                    }`}
+                    title="Виділення"
+                  >
+                    ⬚
+                  </button>
                 </div>
               </div>
+
+              {/* Selection Controls - shown when select tool is active */}
+              {tool === 'select' && (
+                <div className="mb-4 rounded border border-blue-200 bg-blue-50 p-2">
+                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-blue-700">
+                    Виділення
+                  </h3>
+
+                  {/* Selection Mode Toggle */}
+                  <div className="flex gap-1 mb-2">
+                    <button
+                      onClick={() => selectionHook.setSelectionMode('rectangle')}
+                      className={`flex-1 rounded px-2 py-1 text-xs transition-colors ${
+                        selectionHook.selectionMode === 'rectangle'
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-white border border-blue-300 hover:bg-blue-100'
+                      }`}
+                      title="Прямокутне виділення"
+                    >
+                      ▢ Прямокут
+                    </button>
+                    <button
+                      onClick={() => selectionHook.setSelectionMode('freeform')}
+                      className={`flex-1 rounded px-2 py-1 text-xs transition-colors ${
+                        selectionHook.selectionMode === 'freeform'
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-white border border-blue-300 hover:bg-blue-100'
+                      }`}
+                      title="Вільне виділення"
+                    >
+                      ✎ Вільне
+                    </button>
+                  </div>
+
+                  {/* Selection Status */}
+                  {selectionHook.hasSelection && selectionHook.selection && (
+                    <div className="text-xs text-blue-700 mb-2">
+                      Виділено: {selectionHook.selection.width} × {selectionHook.selection.height}
+                    </div>
+                  )}
+
+                  {/* Copy/Cut Operations */}
+                  {selectionHook.hasSelection && (
+                    <div className="flex gap-1 mb-2">
+                      <button
+                        onClick={() => selectionHook.copy(pattern)}
+                        className="flex-1 rounded bg-white border border-blue-300 px-2 py-1 text-xs hover:bg-blue-100 transition-colors"
+                        title="Копіювати (Ctrl+C)"
+                      >
+                        📋 Копіювати
+                      </button>
+                      <button
+                        onClick={() => selectionHook.cut(pattern, actions.setBead)}
+                        className="flex-1 rounded bg-white border border-blue-300 px-2 py-1 text-xs hover:bg-blue-100 transition-colors"
+                        title="Вирізати (Ctrl+X)"
+                      >
+                        ✂️ Вирізати
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Clipboard Operations */}
+                  {selectionHook.hasClipboard && (
+                    <>
+                      {/* Paste position indicator */}
+                      <div className="text-xs text-green-700 mb-1">
+                        {selectionHook.pastePosition
+                          ? `Вставка: (${selectionHook.pastePosition.x}, ${selectionHook.pastePosition.y})`
+                          : selectionHook.selection
+                            ? `Вставка: (${selectionHook.selection.x}, ${selectionHook.selection.y})`
+                            : 'Вставка: (0, 0)'
+                        }
+                      </div>
+                      <p className="text-[10px] text-green-600 mb-2">
+                        Клікніть на канвасі щоб вказати позицію
+                      </p>
+
+                      <div className="flex gap-1 mb-2">
+                        <button
+                          onClick={() => selectionHook.paste(pattern, actions.setBead)}
+                          className="flex-1 rounded bg-green-500 text-white px-2 py-1 text-xs hover:bg-green-600 transition-colors"
+                          title="Вставити (Ctrl+V)"
+                        >
+                          📥 Вставити
+                        </button>
+                      </div>
+
+                      {/* Transform Operations */}
+                      <div className="text-xs text-blue-600 mb-1">Перетворення буфера:</div>
+                      <div className="flex gap-1 mb-1">
+                        <button
+                          onClick={() => selectionHook.flipHorizontal()}
+                          className="flex-1 rounded bg-white border border-blue-300 px-1.5 py-1 text-xs hover:bg-blue-100 transition-colors"
+                          title="Відзеркалити горизонтально"
+                        >
+                          ↔️ Гориз
+                        </button>
+                        <button
+                          onClick={() => selectionHook.flipVertical()}
+                          className="flex-1 rounded bg-white border border-blue-300 px-1.5 py-1 text-xs hover:bg-blue-100 transition-colors"
+                          title="Відзеркалити вертикально"
+                        >
+                          ↕️ Верт
+                        </button>
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => selectionHook.rotate90()}
+                          className="flex-1 rounded bg-white border border-blue-300 px-1.5 py-1 text-xs hover:bg-blue-100 transition-colors"
+                          title="Повернути на 90°"
+                        >
+                          ↻ 90°
+                        </button>
+                        <button
+                          onClick={() => selectionHook.rotate180()}
+                          className="flex-1 rounded bg-white border border-blue-300 px-1.5 py-1 text-xs hover:bg-blue-100 transition-colors"
+                          title="Повернути на 180°"
+                        >
+                          ↻ 180°
+                        </button>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Clear Selection */}
+                  {(selectionHook.hasSelection || selectionHook.hasClipboard) && (
+                    <button
+                      onClick={() => selectionHook.clearSelection()}
+                      className="w-full mt-2 rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 transition-colors"
+                    >
+                      Скасувати виділення
+                    </button>
+                  )}
+
+                  {/* Help text */}
+                  {!selectionHook.hasSelection && !selectionHook.hasClipboard && (
+                    <p className="text-[10px] text-blue-600">
+                      {selectionHook.selectionMode === 'rectangle'
+                        ? 'Затисніть ЛКМ і виділіть область'
+                        : 'Намалюйте контур виділення'}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Color Palette */}
               <div className="mb-4">
@@ -801,6 +998,19 @@ export default function RopeEditorPage() {
               onScroll={(top, left) => handleSyncScroll(top, left, 'draft')}
               eventPositions={eventPositions}
               onEventPositionClick={handleOpenEventEditor}
+              tool={tool}
+              selection={selectionHook.selection}
+              isSelecting={selectionHook.isSelecting}
+              selectionMode={selectionHook.selectionMode}
+              freeformPoints={selectionHook.freeformPoints}
+              onSelectionStart={selectionHook.startSelection}
+              onSelectionUpdate={selectionHook.updateSelection}
+              onSelectionEnd={() => selectionHook.endSelection(pattern)}
+              onFreeformPointAdd={selectionHook.addFreeformPoint}
+              onFreeformSelectionClose={() => selectionHook.closeFreeformSelection(pattern)}
+              hasClipboard={selectionHook.hasClipboard}
+              pastePosition={selectionHook.pastePosition}
+              onPastePositionSet={selectionHook.setPastePosition}
             />
           )}
 
