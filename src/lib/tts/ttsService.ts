@@ -272,6 +272,17 @@ function getColorKeyFromTranslation(translatedName: string, language: TTSLanguag
 }
 
 /**
+ * Event execution handler type
+ * Returns true to continue, false to pause TTS
+ */
+export type EventExecutionHandler = (position: number) => Promise<boolean>;
+
+/**
+ * Checkpoint save handler type
+ */
+export type CheckpointSaveHandler = (position: number) => void;
+
+/**
  * TTS Controller class for managing playback
  * Uses pre-recorded audio files with fallback to Web Speech API
  */
@@ -285,6 +296,8 @@ export class TTSController {
   private onPositionChange?: (position: number, colorName: string, groupCount: number) => void;
   private onComplete?: () => void;
   private onStateChange?: (isPlaying: boolean, isPaused: boolean) => void;
+  private onExecuteEvents?: EventExecutionHandler;
+  private onSaveCheckpoint?: CheckpointSaveHandler;
   private pauseTimeout?: ReturnType<typeof setTimeout>;
   private useAudioFiles = true; // Try audio files first
   private colorMappings: ColorMapping[] = [];
@@ -331,10 +344,14 @@ export class TTSController {
     onPositionChange?: (position: number, colorName: string, groupCount: number) => void;
     onComplete?: () => void;
     onStateChange?: (isPlaying: boolean, isPaused: boolean) => void;
+    onExecuteEvents?: EventExecutionHandler;
+    onSaveCheckpoint?: CheckpointSaveHandler;
   }): void {
     this.onPositionChange = handlers.onPositionChange;
     this.onComplete = handlers.onComplete;
     this.onStateChange = handlers.onStateChange;
+    this.onExecuteEvents = handlers.onExecuteEvents;
+    this.onSaveCheckpoint = handlers.onSaveCheckpoint;
   }
 
   /**
@@ -747,7 +764,7 @@ export class TTSController {
     return item ? getIndividualText(item) : '';
   }
 
-  private speakNext(): void {
+  private async speakNext(): Promise<void> {
     if (!this.isPlaying || this.isPaused) return;
 
     const maxIndex =
@@ -772,6 +789,20 @@ export class TTSController {
     const position = this.getCurrentPosition();
     const colorName = this.getCurrentColorName();
     const groupCount = this.getCurrentGroupCount();
+
+    // Execute cell events BEFORE voicing (if handler is set)
+    if (this.onExecuteEvents) {
+      try {
+        const shouldContinue = await this.onExecuteEvents(position);
+        if (!shouldContinue) {
+          // Event requested pause (e.g., pause action)
+          this.pause();
+          return;
+        }
+      } catch (error) {
+        console.warn('[TTS] Error executing events at position', position, error);
+      }
+    }
 
     this.onPositionChange?.(position, colorName, groupCount);
 

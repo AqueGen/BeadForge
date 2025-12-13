@@ -27,6 +27,10 @@ interface CanvasPanelProps {
   onBeadDrag?: (x: number, y: number) => void;
   highlightedBeads?: HighlightedBeads | null;
   completedBeads?: number;  // Number of beads completed (for dimming)
+  /** Positions (1-based stringing order) that have events attached */
+  eventPositions?: Set<number>;
+  /** Callback when clicking on a cell with events (for editing) */
+  onEventPositionClick?: (position: number) => void;
   // Synchronized scrolling props
   scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
   onScroll?: (scrollTop: number, scrollLeft: number) => void;
@@ -45,6 +49,8 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
   onBeadDrag,
   highlightedBeads,
   completedBeads = 0,
+  eventPositions,
+  onEventPositionClick: _onEventPositionClick,
   scrollContainerRef,
   onScroll,
 }) => {
@@ -102,6 +108,10 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
     // Render based on view type
     if (viewType === 'draft') {
       renderDraft(ctx, pattern, zoom);
+      // Draw event markers
+      if (eventPositions && eventPositions.size > 0) {
+        renderEventMarkers(ctx, pattern, zoom, eventPositions);
+      }
       // Draw dimmed overlay for completed beads
       if (completedBeads > 0) {
         renderCompletedOverlay(ctx, pattern, zoom, completedBeads);
@@ -112,6 +122,10 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
       }
     } else if (viewType === 'corrected') {
       renderCorrected(ctx, pattern, zoom, brickOffset);
+      // Draw event markers (with brick offset)
+      if (eventPositions && eventPositions.size > 0) {
+        renderEventMarkers(ctx, pattern, zoom, eventPositions, brickOffset);
+      }
       // Draw dimmed overlay for completed beads (with brick offset)
       if (completedBeads > 0) {
         renderCompletedOverlay(ctx, pattern, zoom, completedBeads, brickOffset);
@@ -123,7 +137,7 @@ export const CanvasPanel: FC<CanvasPanelProps> = ({
     } else {
       renderSimulation(ctx, pattern, zoom, shift, brickOffset);
     }
-  }, [pattern, zoom, viewType, shift, brickOffset, highlightedBeads, completedBeads]);
+  }, [pattern, zoom, viewType, shift, brickOffset, highlightedBeads, completedBeads, eventPositions]);
 
   const getGridPosition = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -561,5 +575,54 @@ function renderCompletedOverlay(
     const screenY = (pattern.height - 1 - coord.y) * zoom;
 
     ctx.fillRect(screenX, screenY, zoom - 1, zoom - 1);
+  }
+}
+
+/**
+ * Render event markers on cells that have events attached
+ * Draws a distinct yellow/gold border around cells with events
+ */
+function renderEventMarkers(
+  ctx: CanvasRenderingContext2D,
+  pattern: BeadPattern,
+  zoom: number,
+  eventPositions: Set<number>,
+  brickOffset: number = 0
+) {
+  const usedHeight = getUsedHeight(pattern);
+  if (usedHeight === 0) return;
+
+  // Yellow/gold color for event markers
+  ctx.strokeStyle = '#fbbf24'; // Amber-400
+  ctx.lineWidth = 2;
+
+  for (const pos of Array.from(eventPositions)) {
+    const coord = positionToCoordinates(pos, pattern, usedHeight);
+    if (!coord) continue;
+
+    // Cumulative brick offset for this row
+    const rowOffset = coord.y * brickOffset;
+    const intOffset = Math.floor(rowOffset);
+    const fracOffset = rowOffset - intOffset;
+    const dx = fracOffset * zoom;
+
+    // Calculate visual X position with wrapping
+    const visualX = ((coord.x + intOffset) % pattern.width + pattern.width) % pattern.width;
+
+    // Convert to screen coordinates (y=0 is visual bottom)
+    const screenX = visualX * zoom + dx;
+    const screenY = (pattern.height - 1 - coord.y) * zoom;
+
+    // Draw border
+    ctx.strokeRect(screenX + 1, screenY + 1, zoom - 3, zoom - 3);
+
+    // Draw small event indicator (lightning bolt icon area)
+    if (zoom >= 14) {
+      ctx.fillStyle = '#fbbf24';
+      const iconSize = Math.min(8, zoom * 0.35);
+      ctx.beginPath();
+      ctx.arc(screenX + zoom - iconSize - 1, screenY + iconSize + 1, iconSize / 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 }

@@ -4,14 +4,17 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { Navigation } from '@/components/layout/Navigation';
 import { coordinatesToPosition, calculateRepeat } from '@/lib/pattern';
+import { generatePatternId } from '@/lib/tts';
 import { Toolbar, type PanelVisibility } from '@/components/editor/Toolbar';
 import { ColorPalette } from '@/components/editor/ColorPalette';
 import { CanvasPanel } from '@/components/editor/CanvasPanel';
 import { ColorMappingPanel } from '@/components/editor/ColorMappingPanel';
 import { TTSPanel } from '@/components/tts';
 import { ConfirmDialog, StatsModal, type StatsModalData } from '@/components/ui/Modals';
+import { EventToast, useEventToast, EventsPanel, EventEditorModal, CheckpointRestoreDialog } from '@/components/events';
 import { usePattern } from '@/hooks/usePattern';
 import { useColorMapping } from '@/hooks/useColorMapping';
+import { useCellEvents } from '@/hooks/useCellEvents';
 import { getSamplePatternList, getHighlightedBeads } from '@/lib/pattern';
 import { SKIP_COLOR_INDEX, EMPTY_COLOR_INDEX, type DrawingTool, type HighlightedBeads } from '@/types';
 
@@ -101,7 +104,8 @@ export default function RopeEditorPage() {
   const [ttsNavigationMode, setTtsNavigationMode] = useState(false);
   const [editModeEnabled, setEditModeEnabled] = useState(false);
   const [ttsNavigateTarget, setTtsNavigateTarget] = useState<number | null>(null);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true); // Default: collapsed
+  // Sidebar mode: 'collapsed' | 'edit' | 'events' | 'examples'
+  const [sidebarMode, setSidebarMode] = useState<'collapsed' | 'edit' | 'events' | 'examples'>('collapsed');
   const [showColorMappingPanel, setShowColorMappingPanel] = useState(false);
   const [brickOffset, setBrickOffset] = useState(0.5); // Default: half bead shift
   const [showClearConfirm, setShowClearConfirm] = useState(false);
@@ -114,6 +118,17 @@ export default function RopeEditorPage() {
   });
   const [replaceMode, setReplaceMode] = useState<number | null>(null); // color index to replace
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [checkpointRestoreHandled, setCheckpointRestoreHandled] = useState(false);
+
+  // Generate pattern ID for events storage
+  const patternId = useMemo(() => generatePatternId(pattern), [pattern]);
+
+  // Cell events hook
+  const cellEvents = useCellEvents(patternId);
+
+  // Toast for text events
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { toast, showToast, dismissToast } = useEventToast();
 
   // Load panelVisibility from localStorage on mount
   useEffect(() => {
@@ -156,6 +171,30 @@ export default function RopeEditorPage() {
 
   // Color mapping hook
   const colorMapping = useColorMapping(pattern);
+
+  // Get event positions for canvas visualization
+  const eventPositions = useMemo(() => {
+    return new Set(cellEvents.getAllPositionsWithEvents());
+  }, [cellEvents]);
+
+  // Checkpoint restore handlers
+  const handleCheckpointRestore = useCallback((position: number) => {
+    setTtsNavigateTarget(position);
+    setCheckpointRestoreHandled(true);
+    cellEvents.actions.clearCheckpoint();
+  }, [cellEvents.actions]);
+
+  const handleCheckpointDismiss = useCallback(() => {
+    setCheckpointRestoreHandled(true);
+    cellEvents.actions.clearCheckpoint();
+  }, [cellEvents.actions]);
+
+  // Check if checkpoint applies to current pattern
+  const shouldShowCheckpointRestore = useMemo(() => {
+    if (checkpointRestoreHandled) return false;
+    if (!cellEvents.checkpoint) return false;
+    return cellEvents.checkpoint.patternId === patternId;
+  }, [cellEvents.checkpoint, patternId, checkpointRestoreHandled]);
 
   // Count empty cells
   const emptyCellCount = useMemo(() => {
@@ -235,14 +274,25 @@ export default function RopeEditorPage() {
     return stats;
   }, [pattern]);
 
-  // Toggle sidebar - expanding enables edit mode, collapsing disables it
-  const handleSidebarToggle = useCallback(() => {
-    setSidebarCollapsed(prev => {
-      const newCollapsed = !prev;
-      // Expanding enables edit mode, collapsing disables it
-      setEditModeEnabled(!newCollapsed);
-      return newCollapsed;
-    });
+  // Sidebar mode handlers
+  const handleOpenEditMode = useCallback(() => {
+    setSidebarMode('edit');
+    setEditModeEnabled(true);
+  }, []);
+
+  const handleOpenEventsMode = useCallback(() => {
+    setSidebarMode('events');
+    setEditModeEnabled(false);
+  }, []);
+
+  const handleOpenExamplesMode = useCallback(() => {
+    setSidebarMode('examples');
+    setEditModeEnabled(false);
+  }, []);
+
+  const handleCloseSidebar = useCallback(() => {
+    setSidebarMode('collapsed');
+    setEditModeEnabled(false);
   }, []);
 
   // Refs for synchronized scrolling
@@ -294,6 +344,15 @@ export default function RopeEditorPage() {
         return;
       }
 
+      // Handle events mode - open event editor for clicked cell
+      if (sidebarMode === 'events') {
+        const position = coordinatesToPosition(pattern, x, y);
+        if (position !== null) {
+          cellEvents.actions.openEditor(position);
+        }
+        return;
+      }
+
       // Handle edit mode - only allow editing when explicitly enabled
       if (editModeEnabled) {
         if (tool === 'pencil') {
@@ -307,7 +366,7 @@ export default function RopeEditorPage() {
         }
       }
     },
-    [tool, selectedColor, actions, pattern, ttsNavigationMode, editModeEnabled]
+    [tool, selectedColor, actions, pattern, ttsNavigationMode, editModeEnabled, sidebarMode, cellEvents.actions]
   );
 
   const handleBeadDrag = useCallback(
@@ -331,6 +390,15 @@ export default function RopeEditorPage() {
     },
     [pattern]
   );
+
+  // Event editor handlers
+  const handleOpenEventEditor = useCallback((position: number) => {
+    cellEvents.actions.openEditor(position);
+  }, [cellEvents.actions]);
+
+  const handleNavigateToEventPosition = useCallback((position: number) => {
+    setTtsNavigateTarget(position);
+  }, []);
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -368,33 +436,88 @@ export default function RopeEditorPage() {
       />
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Collapsible Edit Sidebar */}
+        {/* Collapsible Dual-Mode Sidebar */}
         <aside
           className={`shrink-0 border-r bg-white transition-all duration-200 ${
-            sidebarCollapsed ? 'w-12' : 'w-56'
+            sidebarMode === 'collapsed' ? 'w-12' : 'w-56'
           }`}
         >
           {/* Header - always visible */}
           <div
-            className={`flex h-10 items-center border-b ${
-              sidebarCollapsed
-                ? 'justify-center cursor-pointer hover:bg-green-50'
-                : 'justify-between px-3 bg-green-50'
+            className={`flex items-center border-b ${
+              sidebarMode === 'collapsed'
+                ? 'flex-col justify-center py-2'
+                : sidebarMode === 'edit'
+                  ? 'h-10 justify-between px-3 bg-green-50'
+                  : sidebarMode === 'events'
+                    ? 'h-10 justify-between px-3 bg-amber-50'
+                    : 'h-10 justify-between px-3 bg-blue-50'
             }`}
-            onClick={sidebarCollapsed ? handleSidebarToggle : undefined}
-            title={sidebarCollapsed ? 'Відкрити редагування' : undefined}
           >
-            {sidebarCollapsed ? (
-              <span className="text-xl" title="Відкрити редагування">✏️</span>
-            ) : (
+            {sidebarMode === 'collapsed' ? (
+              <div className="flex flex-col items-center gap-1">
+                <button
+                  onClick={handleOpenEditMode}
+                  className="p-1.5 rounded hover:bg-green-100 transition-colors"
+                  title="Редагування кольорів"
+                >
+                  <span className="text-lg">✏️</span>
+                </button>
+                <button
+                  onClick={handleOpenEventsMode}
+                  className="p-1.5 rounded hover:bg-amber-100 transition-colors relative"
+                  title="Редагування подій"
+                >
+                  <span className="text-lg">⚡</span>
+                  {cellEvents.getEventCount() > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-amber-500 text-white text-[8px] w-4 h-4 rounded-full flex items-center justify-center">
+                      {cellEvents.getEventCount()}
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={handleOpenExamplesMode}
+                  className="p-1.5 rounded hover:bg-blue-100 transition-colors"
+                  title="Приклади візерунків"
+                >
+                  <span className="text-lg">📋</span>
+                </button>
+              </div>
+            ) : sidebarMode === 'edit' ? (
               <>
                 <span className="text-xs font-semibold uppercase tracking-wider text-green-700">
                   ✏️ Редагування
                 </span>
                 <button
-                  onClick={handleSidebarToggle}
+                  onClick={handleCloseSidebar}
                   className="rounded p-1 text-gray-400 hover:bg-green-100 hover:text-gray-600"
-                  title="Закрити редагування"
+                  title="Закрити"
+                >
+                  ✕
+                </button>
+              </>
+            ) : sidebarMode === 'events' ? (
+              <>
+                <span className="text-xs font-semibold uppercase tracking-wider text-amber-700">
+                  ⚡ Події
+                </span>
+                <button
+                  onClick={handleCloseSidebar}
+                  className="rounded p-1 text-gray-400 hover:bg-amber-100 hover:text-gray-600"
+                  title="Закрити"
+                >
+                  ✕
+                </button>
+              </>
+            ) : (
+              <>
+                <span className="text-xs font-semibold uppercase tracking-wider text-blue-700">
+                  📋 Приклади
+                </span>
+                <button
+                  onClick={handleCloseSidebar}
+                  className="rounded p-1 text-gray-400 hover:bg-blue-100 hover:text-gray-600"
+                  title="Закрити"
                 >
                   ✕
                 </button>
@@ -402,8 +525,8 @@ export default function RopeEditorPage() {
             )}
           </div>
 
-          {/* Content - only visible when expanded */}
-          {!sidebarCollapsed && (
+          {/* Edit Mode Content */}
+          {sidebarMode === 'edit' && (
             <div className="overflow-y-auto p-3" style={{ height: 'calc(100% - 40px)' }}>
               {/* Drawing Tools */}
               <div className="mb-4">
@@ -537,26 +660,7 @@ export default function RopeEditorPage() {
                 )}
               </div>
 
-              {/* Sample Patterns */}
               <div className="border-t pt-3">
-                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  Приклади
-                </h3>
-                <div className="space-y-1">
-                  {SAMPLE_PATTERNS.map((sample) => (
-                    <button
-                      key={sample.id}
-                      onClick={() => actions.loadSample(sample.id)}
-                      className="w-full text-left px-2 py-1 text-xs rounded hover:bg-gray-100 transition-colors"
-                      title={sample.description}
-                    >
-                      {sample.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-4 border-t pt-3">
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
                   Інформація
                 </h3>
@@ -585,6 +689,58 @@ export default function RopeEditorPage() {
                   </div>
                 )}
               </div>
+
+            </div>
+          )}
+
+          {/* Events Mode Content */}
+          {sidebarMode === 'events' && (
+            <div className="overflow-y-auto" style={{ height: 'calc(100% - 40px)' }}>
+              <EventsPanel
+                events={cellEvents.events}
+                onNavigateToPosition={handleNavigateToEventPosition}
+                onEditEvent={(position: number, eventIndex: number) => {
+                  cellEvents.actions.openEditor(position, eventIndex);
+                }}
+                onRemoveEvent={(position: number, eventId: string) => {
+                  cellEvents.actions.removeEvent(position, eventId);
+                }}
+                onAddEvent={(position: number) => {
+                  cellEvents.actions.openEditor(position);
+                }}
+              />
+              <div className="p-3 text-[10px] text-gray-500 border-t">
+                Натисніть на комірку в редакторі, щоб додати подію до неї
+              </div>
+            </div>
+          )}
+
+          {/* Examples Mode Content */}
+          {sidebarMode === 'examples' && (
+            <div className="overflow-y-auto p-3" style={{ height: 'calc(100% - 40px)' }}>
+              <p className="text-xs text-gray-500 mb-3">
+                Оберіть візерунок для завантаження:
+              </p>
+              <div className="space-y-1">
+                {SAMPLE_PATTERNS.map((sample) => (
+                  <button
+                    key={sample.id}
+                    onClick={() => {
+                      actions.loadSample(sample.id);
+                      handleCloseSidebar();
+                    }}
+                    className="w-full text-left px-3 py-2 text-sm rounded border border-gray-200 hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                    title={sample.description}
+                  >
+                    <span className="font-medium text-gray-700">{sample.name}</span>
+                    {sample.description && (
+                      <p className="text-[10px] text-gray-400 mt-0.5 truncate">
+                        {sample.description}
+                      </p>
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </aside>
@@ -603,6 +759,8 @@ export default function RopeEditorPage() {
               completedBeads={completedBeads}
               scrollContainerRef={draftScrollRef}
               onScroll={(top, left) => handleSyncScroll(top, left, 'draft')}
+              eventPositions={eventPositions}
+              onEventPositionClick={handleOpenEventEditor}
             />
           )}
 
@@ -620,6 +778,8 @@ export default function RopeEditorPage() {
               completedBeads={completedBeads}
               scrollContainerRef={correctedScrollRef}
               onScroll={(top, left) => handleSyncScroll(top, left, 'corrected')}
+              eventPositions={eventPositions}
+              onEventPositionClick={handleOpenEventEditor}
             />
           )}
 
@@ -634,6 +794,7 @@ export default function RopeEditorPage() {
               brickOffset={brickOffset}
               scrollContainerRef={simulationScrollRef}
               onScroll={(top, left) => handleSyncScroll(top, left, 'simulation')}
+              eventPositions={eventPositions}
             />
           )}
         </main>
@@ -712,6 +873,50 @@ export default function RopeEditorPage() {
         cancelText="Скасувати"
         variant="danger"
       />
+
+      {/* Event Editor Modal */}
+      {cellEvents.editorState.isOpen && cellEvents.editorState.position !== null && (
+        <EventEditorModal
+          isOpen={cellEvents.editorState.isOpen}
+          position={cellEvents.editorState.position}
+          editingEvent={
+            cellEvents.editorState.editingEventIndex !== null
+              ? cellEvents.getEventsAtPosition(cellEvents.editorState.position)[cellEvents.editorState.editingEventIndex] ?? null
+              : null
+          }
+          onSave={(event) => {
+            const pos = cellEvents.editorState.position;
+            const editIdx = cellEvents.editorState.editingEventIndex;
+            if (pos !== null) {
+              if (editIdx !== null) {
+                // Update existing event
+                const existingEvents = cellEvents.getEventsAtPosition(pos);
+                if (existingEvents[editIdx]) {
+                  cellEvents.actions.updateEvent(pos, existingEvents[editIdx].id, event);
+                }
+              } else {
+                // Add new event
+                cellEvents.actions.addEvent(pos, event);
+              }
+            }
+            cellEvents.actions.closeEditor();
+          }}
+          onClose={() => cellEvents.actions.closeEditor()}
+        />
+      )}
+
+      {/* Event Toast for text events */}
+      <EventToast toast={toast} onDismiss={dismissToast} />
+
+      {/* Checkpoint Restore Dialog */}
+      {shouldShowCheckpointRestore && (
+        <CheckpointRestoreDialog
+          checkpoint={cellEvents.checkpoint}
+          currentPatternId={patternId}
+          onRestore={handleCheckpointRestore}
+          onDismiss={handleCheckpointDismiss}
+        />
+      )}
       </div>
     </div>
   );

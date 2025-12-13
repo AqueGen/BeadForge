@@ -89,6 +89,18 @@ MODIFIER_TRANSLATIONS: Dict[str, Dict[str, str]] = {
     "bright": {"ru": "яркий", "uk": "яскравий", "en": "bright"},
 }
 
+# Event sound translations for cell events feature
+# Note: Signal sounds (beep, double-beep, melody) should be actual audio files, not TTS
+EVENT_TRANSLATIONS: Dict[str, Dict[str, str]] = {
+    # Beading techniques - spoken announcements
+    "petlya-pidyomu": {"uk": "петля підйому"},
+    "prybavka": {"uk": "прибавка"},
+    "ubavka": {"uk": "убавка"},
+    "zakriplennya": {"uk": "закріплення"},
+    # Attention signal - spoken
+    "attention": {"uk": "увага"},
+}
+
 # Language to gTTS language code mapping
 LANGUAGE_CODES: Dict[str, str] = {
     "ru": "ru",
@@ -288,18 +300,82 @@ def generate_all_modifiers(
     return generated
 
 
+def get_events_output_dir(language: str) -> Path:
+    """Get the output directory for event audio files"""
+    root = get_project_root()
+    return root / "public" / "audio" / "events" / language
+
+
+def generate_event_audio(
+    event_key: str,
+    languages: Optional[List[str]] = None,
+    overwrite: bool = False
+) -> int:
+    """Generate audio files for a single event sound in specified languages"""
+    if languages is None:
+        languages = ["uk"]  # Events are Ukrainian-only by default
+
+    translations = EVENT_TRANSLATIONS.get(event_key)
+    if not translations:
+        print(f"Warning: No translations found for event '{event_key}'")
+        return 0
+
+    generated = 0
+
+    for lang in languages:
+        text = translations.get(lang)
+        if not text:
+            print(f"Warning: No {lang} translation for event '{event_key}'")
+            continue
+
+        output_dir = get_events_output_dir(lang)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        output_path = output_dir / f"{event_key}.mp3"
+
+        if output_path.exists() and not overwrite:
+            print(f"Skipping (exists): {output_path}")
+            continue
+
+        print(f"Generating event: {output_path} - '{text}'")
+
+        if generate_audio_gtts(text, lang, output_path, tld="com"):
+            generated += 1
+
+    return generated
+
+
+def generate_all_events(
+    languages: Optional[List[str]] = None,
+    events: Optional[List[str]] = None,
+    overwrite: bool = False
+) -> int:
+    """Generate audio files for all event sounds"""
+    if events is None:
+        events = list(EVENT_TRANSLATIONS.keys())
+
+    generated = 0
+    for event in events:
+        generated += generate_event_audio(
+            event, languages=languages, overwrite=overwrite
+        )
+
+    return generated
+
+
 def generate_all_audio(
     languages: Optional[List[str]] = None,
     colors: Optional[List[str]] = None,
     include_numbers: bool = True,
     include_modifiers: bool = True,
+    include_events: bool = True,
     overwrite: bool = False
 ) -> Dict[str, int]:
     """Generate all audio files"""
     if colors is None:
         colors = list(COLOR_TRANSLATIONS.keys())
 
-    stats = {"colors": 0, "numbers": 0, "modifiers": 0}
+    stats = {"colors": 0, "numbers": 0, "modifiers": 0, "events": 0}
 
     print(f"\n{'='*60}")
     print("BeadForge TTS Audio Generator")
@@ -308,6 +384,7 @@ def generate_all_audio(
     print(f"Colors: {len(colors)}")
     print(f"Include numbers: {include_numbers}")
     print(f"Include modifiers: {include_modifiers}")
+    print(f"Include events: {include_events}")
     print(f"Overwrite existing: {overwrite}")
     print(f"{'='*60}\n")
 
@@ -332,11 +409,20 @@ def generate_all_audio(
             languages=languages, overwrite=overwrite
         )
 
+    # Generate event audio
+    if include_events:
+        print("\nGenerating event audio files...")
+        stats["events"] = generate_all_events(
+            languages=["uk"],  # Events are Ukrainian-only
+            overwrite=overwrite
+        )
+
     print(f"\n{'='*60}")
     print(f"Generation complete!")
     print(f"Colors generated: {stats['colors']}")
     print(f"Numbers generated: {stats['numbers']}")
     print(f"Modifiers generated: {stats['modifiers']}")
+    print(f"Events generated: {stats['events']}")
     print(f"{'='*60}\n")
 
     return stats
@@ -381,6 +467,18 @@ def main():
     )
 
     parser.add_argument(
+        "--events-only",
+        action="store_true",
+        help="Generate only event audio files (techniques, attention)"
+    )
+
+    parser.add_argument(
+        "--no-events",
+        action="store_true",
+        help="Skip generating event audio files"
+    )
+
+    parser.add_argument(
         "--overwrite",
         action="store_true",
         help="Overwrite existing audio files"
@@ -398,6 +496,12 @@ def main():
         help="List all available modifier names and exit"
     )
 
+    parser.add_argument(
+        "--list-events",
+        action="store_true",
+        help="List all available event sound names and exit"
+    )
+
     args = parser.parse_args()
 
     if args.list_colors:
@@ -412,6 +516,13 @@ def main():
         for modifier in sorted(MODIFIER_TRANSLATIONS.keys()):
             trans = MODIFIER_TRANSLATIONS[modifier]
             print(f"  {modifier}: ru='{trans['ru']}', uk='{trans['uk']}', en='{trans['en']}'")
+        return
+
+    if args.list_events:
+        print("Available event sounds:")
+        for event in sorted(EVENT_TRANSLATIONS.keys()):
+            trans = EVENT_TRANSLATIONS[event]
+            print(f"  {event}: uk='{trans.get('uk', 'N/A')}'")
         return
 
     if not GTTS_AVAILABLE:
@@ -433,11 +544,22 @@ def main():
         print(f"\nModifiers generated: {generated}")
         return
 
+    # Handle --events-only flag
+    if args.events_only:
+        print("\nGenerating event audio files only...")
+        generated = generate_all_events(
+            languages=["uk"],  # Events are Ukrainian-only
+            overwrite=args.overwrite
+        )
+        print(f"\nEvents generated: {generated}")
+        return
+
     generate_all_audio(
         languages=args.language,
         colors=args.colors,
         include_numbers=not args.no_numbers,
         include_modifiers=not args.no_modifiers,
+        include_events=not args.no_events,
         overwrite=args.overwrite
     )
 

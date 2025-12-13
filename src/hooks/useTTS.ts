@@ -32,6 +32,12 @@ function saveTTSSettingsToStorage(settings: TTSSettings): void {
   }
 }
 
+/** Event execution handler - returns true to continue, false to pause */
+export type EventExecutionHandler = (position: number) => Promise<boolean>;
+
+/** Checkpoint save handler */
+export type CheckpointSaveHandler = (position: number) => void;
+
 export interface UseTTSReturn {
   // State
   state: TTSState;
@@ -53,6 +59,12 @@ export interface UseTTSReturn {
 
   // Color mappings
   setColorMappings: (mappings: ColorMapping[], ttsMode: ColorMappingTTSMode) => void;
+
+  // Cell events handlers
+  setEventHandlers: (handlers: {
+    onExecuteEvents?: EventExecutionHandler;
+    onSaveCheckpoint?: CheckpointSaveHandler;
+  }) => void;
 }
 
 export function useTTS(initialSettings?: Partial<TTSSettings>): UseTTSReturn {
@@ -195,6 +207,41 @@ export function useTTS(initialSettings?: Partial<TTSSettings>): UseTTSReturn {
     controllerRef.current?.setColorMappings(mappings, ttsMode);
   }, []);
 
+  const setEventHandlers = useCallback((handlers: {
+    onExecuteEvents?: EventExecutionHandler;
+    onSaveCheckpoint?: CheckpointSaveHandler;
+  }) => {
+    if (controllerRef.current) {
+      // Get current handlers and merge with new ones
+      controllerRef.current.setHandlers({
+        onPositionChange: (position, colorName, groupCount) => {
+          setState((prev) => ({
+            ...prev,
+            currentPosition: position,
+            currentGroupCount: groupCount,
+            currentColorName: colorName,
+          }));
+        },
+        onStateChange: (isPlaying, isPaused) => {
+          setState((prev) => ({
+            ...prev,
+            isPlaying,
+            isPaused,
+          }));
+        },
+        onComplete: () => {
+          setState((prev) => ({
+            ...prev,
+            isPlaying: false,
+            isPaused: false,
+          }));
+        },
+        onExecuteEvents: handlers.onExecuteEvents,
+        onSaveCheckpoint: handlers.onSaveCheckpoint,
+      });
+    }
+  }, []);
+
   return {
     state,
     settings,
@@ -207,5 +254,6 @@ export function useTTS(initialSettings?: Partial<TTSSettings>): UseTTSReturn {
     updateSettings,
     initializeWithPattern,
     setColorMappings,
+    setEventHandlers,
   };
 }
