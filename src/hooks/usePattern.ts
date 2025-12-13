@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { BeadPattern, PatternStats, BeadColor } from '@/types';
+import { EMPTY_COLOR_INDEX } from '@/types';
 import {
   createPattern,
   setBead as setBeadFn,
@@ -35,6 +36,9 @@ export interface UsePatternReturn {
     saveJBB: () => void;
     loadJBB: (file: File) => Promise<void>;
     addColor: (color: BeadColor) => number;
+    removeColor: (colorIndex: number) => void;
+    replaceColor: (fromColorIndex: number, toColorIndex: number) => void;
+    countEmptyCells: () => number;
   };
 }
 
@@ -162,6 +166,91 @@ export function usePattern(
     return newIndex;
   }, []);
 
+  // Remove a color from the palette, setting all cells with that color to EMPTY_COLOR_INDEX
+  const removeColor = useCallback((colorIndex: number) => {
+    setPattern((prev) => {
+      // Don't remove if it's the last color or invalid index
+      if (colorIndex < 0 || colorIndex >= prev.colors.length || prev.colors.length <= 1) {
+        return prev;
+      }
+
+      // Create new field with updated color indices
+      const newField = new Uint8Array(prev.field.length);
+      for (let i = 0; i < prev.field.length; i++) {
+        const currentColor = prev.field[i];
+        if (currentColor === colorIndex) {
+          // This cell had the removed color - mark as empty
+          newField[i] = EMPTY_COLOR_INDEX;
+        } else if (currentColor > colorIndex && currentColor < EMPTY_COLOR_INDEX) {
+          // Shift indices down for colors after the removed one
+          newField[i] = currentColor - 1;
+        } else {
+          // Keep as is (including SKIP_COLOR_INDEX and EMPTY_COLOR_INDEX)
+          newField[i] = currentColor;
+        }
+      }
+
+      // Remove the color from palette
+      const newColors = [...prev.colors];
+      newColors.splice(colorIndex, 1);
+
+      return {
+        ...prev,
+        field: newField,
+        colors: newColors,
+      };
+    });
+  }, []);
+
+  // Replace all cells of one color with another color
+  const replaceColor = useCallback((fromColorIndex: number, toColorIndex: number) => {
+    setPattern((prev) => {
+      if (fromColorIndex === toColorIndex) return prev;
+      if (fromColorIndex < 0 || fromColorIndex >= prev.colors.length) return prev;
+      if (toColorIndex < 0 || toColorIndex >= prev.colors.length) return prev;
+
+      // Calculate adjusted target index (shifts down if target is after the removed color)
+      const adjustedToIndex = toColorIndex > fromColorIndex ? toColorIndex - 1 : toColorIndex;
+
+      // Create new field with replaced colors
+      const newField = new Uint8Array(prev.field.length);
+      for (let i = 0; i < prev.field.length; i++) {
+        const currentColor = prev.field[i];
+        if (currentColor === fromColorIndex) {
+          // Replace with target color (already adjusted for index shift)
+          newField[i] = adjustedToIndex;
+        } else if (currentColor > fromColorIndex && currentColor < EMPTY_COLOR_INDEX) {
+          // Shift indices down for colors after the removed one
+          newField[i] = currentColor - 1;
+        } else {
+          // Keep as is (colors before removed, SKIP_COLOR_INDEX, EMPTY_COLOR_INDEX)
+          newField[i] = currentColor;
+        }
+      }
+
+      // Remove the "from" color from palette
+      const newColors = [...prev.colors];
+      newColors.splice(fromColorIndex, 1);
+
+      return {
+        ...prev,
+        field: newField,
+        colors: newColors,
+      };
+    });
+  }, []);
+
+  // Count cells with EMPTY_COLOR_INDEX
+  const countEmptyCells = useCallback((): number => {
+    let count = 0;
+    for (let i = 0; i < pattern.field.length; i++) {
+      if (pattern.field[i] === EMPTY_COLOR_INDEX) {
+        count++;
+      }
+    }
+    return count;
+  }, [pattern.field]);
+
   const actions = useMemo(
     () => ({
       setBead,
@@ -177,8 +266,11 @@ export function usePattern(
       saveJBB,
       loadJBB: loadJBBFile,
       addColor,
+      removeColor,
+      replaceColor,
+      countEmptyCells,
     }),
-    [setBead, floodFill, clear, mirrorH, mirrorV, save, load, loadSample, reset, getStats, saveJBB, loadJBBFile, addColor]
+    [setBead, floodFill, clear, mirrorH, mirrorV, save, load, loadSample, reset, getStats, saveJBB, loadJBBFile, addColor, removeColor, replaceColor, countEmptyCells]
   );
 
   return { pattern, actions };

@@ -13,7 +13,7 @@ import { ConfirmDialog, StatsModal, type StatsModalData } from '@/components/ui/
 import { usePattern } from '@/hooks/usePattern';
 import { useColorMapping } from '@/hooks/useColorMapping';
 import { getSamplePatternList, getHighlightedBeads } from '@/lib/pattern';
-import { SKIP_COLOR_INDEX, type DrawingTool, type HighlightedBeads } from '@/types';
+import { SKIP_COLOR_INDEX, EMPTY_COLOR_INDEX, type DrawingTool, type HighlightedBeads } from '@/types';
 
 const SAMPLE_PATTERNS = getSamplePatternList();
 
@@ -93,7 +93,7 @@ export default function RopeEditorPage() {
   const { pattern, actions } = usePattern(8, 100);
   const [selectedColor, setSelectedColor] = useState(1);
   const [tool, setTool] = useState<DrawingTool>('pencil');
-  const [zoom, setZoom] = useState(20);
+  const [zoom, setZoom] = useState(10);
   const [shift, setShift] = useState(0);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [highlightedBeads, setHighlightedBeads] = useState<HighlightedBeads | null>(null);
@@ -112,6 +112,8 @@ export default function RopeEditorPage() {
     simulation: true,
     tts: true,
   });
+  const [replaceMode, setReplaceMode] = useState<number | null>(null); // color index to replace
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Load panelVisibility from localStorage on mount
   useEffect(() => {
@@ -154,6 +156,22 @@ export default function RopeEditorPage() {
 
   // Color mapping hook
   const colorMapping = useColorMapping(pattern);
+
+  // Count empty cells
+  const emptyCellCount = useMemo(() => {
+    return actions.countEmptyCells();
+  }, [actions]);
+
+  // Count cells with selected color
+  const selectedColorCellCount = useMemo(() => {
+    let count = 0;
+    for (let i = 0; i < pattern.field.length; i++) {
+      if (pattern.field[i] === selectedColor) {
+        count++;
+      }
+    }
+    return count;
+  }, [pattern.field, selectedColor]);
 
   // Calculate pattern stats for modal
   const patternStats = useMemo((): StatsModalData | null => {
@@ -452,12 +470,71 @@ export default function RopeEditorPage() {
                 <ColorPalette
                   colors={pattern.colors}
                   selectedColor={selectedColor}
-                  onColorSelect={setSelectedColor}
+                  onColorSelect={(colorIndex) => {
+                    // Handle replace mode
+                    if (replaceMode !== null && colorIndex !== replaceMode) {
+                      actions.replaceColor(replaceMode, colorIndex);
+                      // Adjust selected color if needed (indices shift after removal)
+                      if (selectedColor === replaceMode) {
+                        setSelectedColor(colorIndex > replaceMode ? colorIndex - 1 : colorIndex);
+                      } else if (selectedColor > replaceMode) {
+                        setSelectedColor(selectedColor - 1);
+                      }
+                      setReplaceMode(null);
+                    } else {
+                      setSelectedColor(colorIndex);
+                      // Exit replace mode if clicking the same color
+                      if (replaceMode === colorIndex) {
+                        setReplaceMode(null);
+                      }
+                    }
+                  }}
                   onCustomColorAdd={(color) => {
                     const newIndex = actions.addColor(color);
                     setSelectedColor(newIndex);
+                    setReplaceMode(null); // Cancel replace mode when adding color
                   }}
+                  replaceMode={replaceMode}
                 />
+
+                {/* Replace mode indicator */}
+                {replaceMode !== null && (
+                  <div className="mt-2 rounded bg-blue-50 border border-blue-200 p-2">
+                    <p className="text-xs text-blue-700">
+                      Оберіть колір для заміни #{replaceMode + 1}
+                    </p>
+                    <button
+                      onClick={() => setReplaceMode(null)}
+                      className="mt-1 text-xs text-blue-600 hover:text-blue-800 underline"
+                    >
+                      Скасувати
+                    </button>
+                  </div>
+                )}
+
+                {/* Color management buttons (only for regular colors) */}
+                {selectedColor !== SKIP_COLOR_INDEX && selectedColor !== EMPTY_COLOR_INDEX && selectedColor < pattern.colors.length && pattern.colors.length > 1 && (
+                  <div className="mt-2 flex gap-1">
+                    <button
+                      onClick={() => setShowDeleteConfirm(true)}
+                      className="flex-1 rounded bg-red-50 border border-red-200 px-2 py-1.5 text-xs text-red-700 hover:bg-red-100 transition-colors"
+                      title="Видалити колір з палітри"
+                    >
+                      🗑️ Видалити
+                    </button>
+                    <button
+                      onClick={() => setReplaceMode(selectedColor)}
+                      className={`flex-1 rounded border px-2 py-1.5 text-xs transition-colors ${
+                        replaceMode === selectedColor
+                          ? 'bg-blue-500 text-white border-blue-500'
+                          : 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100'
+                      }`}
+                      title="Замінити на інший колір"
+                    >
+                      🔄 Замінити
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Sample Patterns */}
@@ -489,10 +566,23 @@ export default function RopeEditorPage() {
                 <p className="text-xs text-gray-600">
                   Колір: {selectedColor === SKIP_COLOR_INDEX ? 'Пропуск' : (pattern.colors[selectedColor]?.name || `#${selectedColor}`)}
                 </p>
-                {selectedColor !== SKIP_COLOR_INDEX && pattern.colors[selectedColor] && (
+                {selectedColor !== SKIP_COLOR_INDEX && selectedColor !== EMPTY_COLOR_INDEX && pattern.colors[selectedColor] && (
                   <p className="text-xs text-gray-600 font-mono">
                     RGB: {pattern.colors[selectedColor].r}, {pattern.colors[selectedColor].g}, {pattern.colors[selectedColor].b}
                   </p>
+                )}
+                <p className="text-xs text-gray-600">
+                  Комірок: {selectedColorCellCount}
+                </p>
+
+                {/* Empty cells warning */}
+                {emptyCellCount > 0 && (
+                  <div className="mt-2 rounded bg-yellow-50 border border-yellow-200 p-2">
+                    <p className="text-xs text-yellow-700 flex items-center gap-1">
+                      <span>⚠️</span>
+                      <span>Незафарбованих комірок: {emptyCellCount}</span>
+                    </p>
+                  </div>
                 )}
               </div>
             </div>
@@ -605,6 +695,22 @@ export default function RopeEditorPage() {
         isOpen={showStatsModal}
         onClose={() => setShowStatsModal(false)}
         stats={patternStats}
+      />
+
+      {/* Delete Color Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={() => {
+          actions.removeColor(selectedColor);
+          setSelectedColor(0);
+          setShowDeleteConfirm(false);
+        }}
+        title="Видалити колір?"
+        message={`Колір "${pattern.colors[selectedColor]?.name || `#${selectedColor + 1}`}" буде видалено з палітри. Всі комірки з цим кольором стануть незафарбованими.`}
+        confirmText="Видалити"
+        cancelText="Скасувати"
+        variant="danger"
       />
       </div>
     </div>

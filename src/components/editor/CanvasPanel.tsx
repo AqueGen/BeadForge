@@ -2,7 +2,7 @@
 
 import { FC, useRef, useEffect, useState, useCallback } from 'react';
 import type { BeadPattern, ViewType, HighlightedBeads } from '@/types';
-import { SKIP_COLOR_INDEX } from '@/types';
+import { SKIP_COLOR_INDEX, EMPTY_COLOR_INDEX } from '@/types';
 import { colorToRgba } from '@/lib/utils';
 import { positionToCoordinates, getUsedHeight } from '@/lib/pattern';
 
@@ -304,6 +304,43 @@ function renderSkipCell(
   ctx.stroke();
 }
 
+// Helper function to draw an empty/uncolored cell (checkerboard pattern)
+function renderEmptyCell(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  size: number
+) {
+  const squareSize = Math.max(2, Math.floor(size / 4));
+  const numSquares = Math.ceil(size / squareSize);
+
+  // Draw checkerboard pattern
+  for (let row = 0; row < numSquares; row++) {
+    for (let col = 0; col < numSquares; col++) {
+      const isLight = (row + col) % 2 === 0;
+      ctx.fillStyle = isLight ? '#ffcccc' : '#ff9999'; // Light/dark pink pattern
+
+      const squareX = x + col * squareSize;
+      const squareY = y + row * squareSize;
+      const w = Math.min(squareSize, x + size - squareX);
+      const h = Math.min(squareSize, y + size - squareY);
+
+      if (w > 0 && h > 0) {
+        ctx.fillRect(squareX, squareY, w, h);
+      }
+    }
+  }
+
+  // Draw question mark in center
+  const centerX = x + size / 2;
+  const centerY = y + size / 2;
+  ctx.fillStyle = '#cc0000';
+  ctx.font = `bold ${Math.max(8, size * 0.6)}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('?', centerX, centerY);
+}
+
 // Render functions
 function renderDraft(
   ctx: CanvasRenderingContext2D,
@@ -316,9 +353,11 @@ function renderDraft(
       const screenX = x * zoom;
       const screenY = (pattern.height - 1 - y) * zoom;
 
-      // Handle skip cells
+      // Handle special cells
       if (colorIndex === SKIP_COLOR_INDEX) {
         renderSkipCell(ctx, screenX, screenY, zoom - 1);
+      } else if (colorIndex === EMPTY_COLOR_INDEX) {
+        renderEmptyCell(ctx, screenX, screenY, zoom - 1);
       } else {
         const color = pattern.colors[colorIndex] || pattern.colors[0];
         ctx.fillStyle = colorToRgba(color);
@@ -377,9 +416,11 @@ function renderCorrected(
       const screenX = visualX * zoom + dx;
       const screenY = (pattern.height - 1 - y) * zoom;
 
-      // Handle skip cells
+      // Handle special cells
       if (colorIndex === SKIP_COLOR_INDEX) {
         renderSkipCell(ctx, screenX, screenY, zoom - 1);
+      } else if (colorIndex === EMPTY_COLOR_INDEX) {
+        renderEmptyCell(ctx, screenX, screenY, zoom - 1);
       } else {
         const color = pattern.colors[colorIndex] || pattern.colors[0];
         ctx.fillStyle = colorToRgba(color);
@@ -418,9 +459,11 @@ function renderSimulation(
       const screenX = shiftedX * zoom + dx;
       const screenY = (pattern.height - 1 - y) * zoom;
 
-      // Handle skip cells
+      // Handle special cells
       if (colorIndex === SKIP_COLOR_INDEX) {
         renderSkipCell(ctx, screenX, screenY, zoom - 1);
+      } else if (colorIndex === EMPTY_COLOR_INDEX) {
+        renderEmptyCell(ctx, screenX, screenY, zoom - 1);
       } else {
         const color = pattern.colors[colorIndex] || pattern.colors[0];
         ctx.fillStyle = colorToRgba(color);

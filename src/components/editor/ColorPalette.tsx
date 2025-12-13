@@ -15,6 +15,8 @@ interface ColorPaletteProps {
   showColorPicker?: boolean;
   /** Callback when custom color is added */
   onCustomColorAdd?: (color: BeadColor) => void;
+  /** Color index being replaced (replace mode) */
+  replaceMode?: number | null;
 }
 
 export const ColorPalette: FC<ColorPaletteProps> = ({
@@ -24,6 +26,7 @@ export const ColorPalette: FC<ColorPaletteProps> = ({
   showAllColors = true,
   showColorPicker = true,
   onCustomColorAdd,
+  replaceMode = null,
 }) => {
   const [showPicker, setShowPicker] = useState(false);
   const [showSystemColors, setShowSystemColors] = useState(false);
@@ -86,17 +89,29 @@ export const ColorPalette: FC<ColorPaletteProps> = ({
           const isFree = colorInfo?.isFree ?? true;
           const isPaid = !isFree;
           const isCustom = actualIndex >= COLOR_PALETTE.length;
+          const isBeingReplaced = replaceMode === actualIndex;
+          const isReplacementTarget = replaceMode !== null && replaceMode !== actualIndex;
 
           return (
             <button
               key={actualIndex}
               onClick={() => onColorSelect(actualIndex)}
-              title={colorInfo?.nameUk || color.name || `Color ${actualIndex}`}
+              title={
+                isBeingReplaced
+                  ? 'Цей колір буде замінено'
+                  : isReplacementTarget
+                    ? `Замінити на ${colorInfo?.nameUk || color.name || `Колір ${actualIndex}`}`
+                    : colorInfo?.nameUk || color.name || `Color ${actualIndex}`
+              }
               className={cn(
                 'relative flex items-center justify-center p-0.5 rounded border-2 transition-all hover:scale-105',
-                actualIndex === selectedColor
-                  ? 'border-primary-500 ring-1 ring-primary-500 bg-primary-50'
-                  : 'border-gray-200 hover:border-gray-300',
+                isBeingReplaced
+                  ? 'border-orange-500 ring-2 ring-orange-300 bg-orange-50 animate-pulse'
+                  : isReplacementTarget
+                    ? 'border-blue-400 hover:border-blue-500 hover:ring-1 hover:ring-blue-300'
+                    : actualIndex === selectedColor
+                      ? 'border-primary-500 ring-1 ring-primary-500 bg-primary-50'
+                      : 'border-gray-200 hover:border-gray-300',
                 isPaid && !showAllColors && 'opacity-50 cursor-not-allowed'
               )}
               disabled={isPaid && !showAllColors}
@@ -116,12 +131,21 @@ export const ColorPalette: FC<ColorPaletteProps> = ({
                 </span>
               )}
               {/* Custom color indicator */}
-              {isCustom && (
+              {isCustom && !isBeingReplaced && (
                 <span
                   className="absolute -top-1 -left-1 text-[8px] bg-blue-400 rounded-full w-3 h-3 flex items-center justify-center text-white"
                   title="Свій колір"
                 >
                   +
+                </span>
+              )}
+              {/* Replace mode indicator */}
+              {isBeingReplaced && (
+                <span
+                  className="absolute -top-1 -right-1 text-[8px] bg-orange-500 rounded-full w-4 h-4 flex items-center justify-center text-white"
+                  title="Буде замінено"
+                >
+                  🔄
                 </span>
               )}
             </button>

@@ -192,6 +192,13 @@ export interface ViewConfig {
  */
 export const SKIP_COLOR_INDEX = 255;
 
+/**
+ * Special color index for "empty/uncolored" cells
+ * Empty cells are shown with checkerboard pattern and trigger warning
+ * Used when a color is deleted from the palette
+ */
+export const EMPTY_COLOR_INDEX = 254;
+
 // ============================================================
 // Default Values
 // ============================================================
