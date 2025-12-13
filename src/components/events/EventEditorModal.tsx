@@ -7,6 +7,7 @@ import type {
   CellEventType,
   EventSoundId,
   CellActionType,
+  EventTiming,
 } from '@/types/cellEvents';
 import {
   createSoundEvent,
@@ -47,6 +48,7 @@ export function EventEditorModal({
   const [actionType, setActionType] = useState<CellActionType>('pause');
   const [textMessage, setTextMessage] = useState('');
   const [textDuration, setTextDuration] = useState(5000);
+  const [timing, setTiming] = useState<EventTiming>('before');
 
   // Get sounds by category
   const techniqueSounds = getEventSoundsByCategory('technique');
@@ -56,6 +58,7 @@ export function EventEditorModal({
   useEffect(() => {
     if (editingEvent) {
       setEventType(editingEvent.type);
+      setTiming(editingEvent.timing || 'before');
 
       if (editingEvent.type === 'sound') {
         setSoundId(editingEvent.soundId);
@@ -72,6 +75,7 @@ export function EventEditorModal({
       setActionType('pause');
       setTextMessage('');
       setTextDuration(5000);
+      setTiming('before');
     }
   }, [editingEvent, isOpen]);
 
@@ -81,14 +85,14 @@ export function EventEditorModal({
     switch (eventType) {
       case 'sound':
         event = editingEvent?.type === 'sound'
-          ? { ...editingEvent, soundId }
-          : createSoundEvent(soundId);
+          ? { ...editingEvent, soundId, timing }
+          : createSoundEvent(soundId, timing);
         break;
 
       case 'action':
         event = editingEvent?.type === 'action'
-          ? { ...editingEvent, actionType }
-          : createActionEvent(actionType);
+          ? { ...editingEvent, actionType, timing }
+          : createActionEvent(actionType, timing);
         break;
 
       case 'text':
@@ -97,8 +101,8 @@ export function EventEditorModal({
           return;
         }
         event = editingEvent?.type === 'text'
-          ? { ...editingEvent, message: textMessage.trim(), duration: textDuration }
-          : createTextEvent(textMessage.trim(), textDuration);
+          ? { ...editingEvent, message: textMessage.trim(), duration: textDuration, timing }
+          : createTextEvent(textMessage.trim(), textDuration, timing);
         break;
 
       default:
@@ -384,6 +388,46 @@ export function EventEditorModal({
               </div>
             </div>
           )}
+
+          {/* Timing selector */}
+          <div className="border-t border-slate-700 pt-4">
+            <label className="block text-sm font-medium text-slate-300 mb-2">
+              Коли виконувати
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setTiming('before')}
+                className={`
+                  flex items-center justify-center gap-2 p-3 rounded-lg border transition-colors
+                  ${timing === 'before'
+                    ? 'border-amber-500 bg-amber-500/10 text-amber-400'
+                    : 'border-slate-600 hover:border-slate-500 text-slate-400'}
+                `}
+              >
+                <span className="text-lg">⏪</span>
+                <div className="text-left">
+                  <p className="text-xs font-medium">До озвучки</p>
+                  <p className="text-[10px] opacity-70">Виконати перед кольором</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setTiming('after')}
+                className={`
+                  flex items-center justify-center gap-2 p-3 rounded-lg border transition-colors
+                  ${timing === 'after'
+                    ? 'border-amber-500 bg-amber-500/10 text-amber-400'
+                    : 'border-slate-600 hover:border-slate-500 text-slate-400'}
+                `}
+              >
+                <span className="text-lg">⏩</span>
+                <div className="text-left">
+                  <p className="text-xs font-medium">Після озвучки</p>
+                  <p className="text-[10px] opacity-70">Виконати після кольору</p>
+                </div>
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Footer */}

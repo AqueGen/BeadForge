@@ -33,6 +33,10 @@ interface TTSPanelProps {
   colorMappingTTSMode?: ColorMappingTTSMode;
   /** Callback to change TTS mode */
   onColorMappingTTSModeChange?: (mode: ColorMappingTTSMode) => void;
+  /** Callback to execute cell events at a position. Returns true to continue, false to pause. */
+  onExecuteEvents?: (position: number, timing: 'before' | 'after') => Promise<boolean>;
+  /** Callback to save checkpoint at a position */
+  onSaveCheckpoint?: (position: number) => void;
 }
 
 export function TTSPanel({
@@ -46,6 +50,8 @@ export function TTSPanel({
   colorMappings,
   colorMappingTTSMode = 'colorOnly',
   onColorMappingTTSModeChange,
+  onExecuteEvents,
+  onSaveCheckpoint,
 }: TTSPanelProps) {
   const {
     state,
@@ -59,6 +65,7 @@ export function TTSPanel({
     updateSettings,
     initializeWithPattern,
     setColorMappings,
+    setEventHandlers,
   } = useTTS();
 
   // System voices (Windows/Mac TTS)
@@ -108,6 +115,14 @@ export function TTSPanel({
       setColorMappings(colorMappings, colorMappingTTSMode);
     }
   }, [colorMappings, colorMappingTTSMode, setColorMappings]);
+
+  // Connect cell event handlers
+  useEffect(() => {
+    setEventHandlers({
+      onExecuteEvents,
+      onSaveCheckpoint,
+    });
+  }, [onExecuteEvents, onSaveCheckpoint, setEventHandlers]);
 
   // Check for saved progress when pattern changes (show restore panel instead of auto-restoring)
   // Run only once per pattern ID change

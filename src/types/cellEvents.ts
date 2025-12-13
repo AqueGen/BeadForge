@@ -15,6 +15,9 @@ export type CellEventType = 'sound' | 'action' | 'text';
 /** System action types */
 export type CellActionType = 'pause' | 'checkpoint';
 
+/** Event timing - when to execute relative to cell voicing */
+export type EventTiming = 'before' | 'after';
+
 /** Sound IDs from the event sounds library */
 export type EventSoundId =
   // Beading techniques
@@ -36,6 +39,7 @@ export type EventSoundId =
 interface BaseCellEvent {
   type: CellEventType;
   id: string; // Unique ID for this event instance
+  timing?: EventTiming; // When to execute: 'before' (default) or 'after' voicing
 }
 
 /** Sound event - plays audio from the library */
@@ -100,42 +104,51 @@ export interface EventEditorState {
 // ============================================================
 
 /** Create a new sound event */
-export function createSoundEvent(soundId: EventSoundId): SoundEvent {
+export function createSoundEvent(soundId: EventSoundId, timing: EventTiming = 'before'): SoundEvent {
   return {
     type: 'sound',
     id: `sound-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
     soundId,
+    timing,
   };
 }
 
 /** Create a new action event */
-export function createActionEvent(actionType: CellActionType): ActionEvent {
+export function createActionEvent(actionType: CellActionType, timing: EventTiming = 'before'): ActionEvent {
   return {
     type: 'action',
     id: `action-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
     actionType,
+    timing,
   };
 }
 
 /** Create a new text event */
-export function createTextEvent(message: string, duration?: number): TextEvent {
+export function createTextEvent(message: string, duration?: number, timing: EventTiming = 'before'): TextEvent {
   return {
     type: 'text',
     id: `text-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
     message,
     duration,
+    timing,
   };
+}
+
+/** Get timing label */
+export function getTimingLabel(timing?: EventTiming): string {
+  return timing === 'after' ? 'після' : 'до';
 }
 
 /** Get display name for event */
 export function getEventDisplayName(event: CellEvent): string {
+  const timingPrefix = event.timing === 'after' ? '⏩ ' : '';
   switch (event.type) {
     case 'sound':
-      return `🔊 ${event.soundId}`;
+      return `${timingPrefix}🔊 ${event.soundId}`;
     case 'action':
-      return event.actionType === 'pause' ? '⏸️ Пауза' : '💾 Чекпоінт';
+      return event.actionType === 'pause' ? `${timingPrefix}⏸️ Пауза` : `${timingPrefix}💾 Чекпоінт`;
     case 'text':
-      return `💬 "${event.message.slice(0, 20)}${event.message.length > 20 ? '...' : ''}"`;
+      return `${timingPrefix}💬 "${event.message.slice(0, 20)}${event.message.length > 20 ? '...' : ''}"`;
   }
 }
 

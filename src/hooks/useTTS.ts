@@ -32,8 +32,11 @@ function saveTTSSettingsToStorage(settings: TTSSettings): void {
   }
 }
 
+/** Event timing type */
+export type EventTimingType = 'before' | 'after';
+
 /** Event execution handler - returns true to continue, false to pause */
-export type EventExecutionHandler = (position: number) => Promise<boolean>;
+export type EventExecutionHandler = (position: number, timing: EventTimingType) => Promise<boolean>;
 
 /** Checkpoint save handler */
 export type CheckpointSaveHandler = (position: number) => void;
@@ -90,6 +93,12 @@ export function useTTS(initialSettings?: Partial<TTSSettings>): UseTTSReturn {
 
   const controllerRef = useRef<TTSController | null>(null);
 
+  // Store event handlers in refs so they can be applied when controller is ready
+  const eventHandlersRef = useRef<{
+    onExecuteEvents?: EventExecutionHandler;
+    onSaveCheckpoint?: CheckpointSaveHandler;
+  }>({});
+
   // Initialize TTS support check
   useEffect(() => {
     const checkSupport = async () => {
@@ -136,6 +145,9 @@ export function useTTS(initialSettings?: Partial<TTSSettings>): UseTTSReturn {
           isPaused: false,
         }));
       },
+      // Include event handlers from refs (they may have been set before controller was ready)
+      onExecuteEvents: eventHandlersRef.current.onExecuteEvents,
+      onSaveCheckpoint: eventHandlersRef.current.onSaveCheckpoint,
     });
   }, [state.isSupported, settings]);
 
@@ -211,8 +223,11 @@ export function useTTS(initialSettings?: Partial<TTSSettings>): UseTTSReturn {
     onExecuteEvents?: EventExecutionHandler;
     onSaveCheckpoint?: CheckpointSaveHandler;
   }) => {
+    // Always store handlers in refs so they're available when controller is ready
+    eventHandlersRef.current = handlers;
+
+    // If controller exists, apply handlers immediately
     if (controllerRef.current) {
-      // Get current handlers and merge with new ones
       controllerRef.current.setHandlers({
         onPositionChange: (position, colorName, groupCount) => {
           setState((prev) => ({

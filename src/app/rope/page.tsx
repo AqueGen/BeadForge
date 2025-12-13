@@ -400,6 +400,21 @@ export default function RopeEditorPage() {
     setTtsNavigateTarget(position);
   }, []);
 
+  // TTS event execution handler - called when TTS reaches a position
+  const handleExecuteEvents = useCallback(async (position: number, timing: 'before' | 'after'): Promise<boolean> => {
+    return cellEvents.actions.executeEventsAtPosition(
+      position,
+      timing,
+      undefined, // onPause - TTS controller handles pause via return value
+      showToast  // onText - show text event as toast
+    );
+  }, [cellEvents.actions, showToast]);
+
+  // TTS checkpoint handler - called when TTS should save a checkpoint
+  const handleSaveCheckpoint = useCallback((position: number) => {
+    cellEvents.actions.saveCheckpoint(patternId, position, pattern.name);
+  }, [cellEvents.actions, patternId, pattern.name]);
+
   return (
     <div className="flex h-screen overflow-hidden">
       <Navigation />
@@ -812,6 +827,8 @@ export default function RopeEditorPage() {
               colorMappings={colorMapping.mappings}
               colorMappingTTSMode={colorMapping.ttsMode}
               onColorMappingTTSModeChange={colorMapping.setTTSMode}
+              onExecuteEvents={handleExecuteEvents}
+              onSaveCheckpoint={handleSaveCheckpoint}
             />
           </aside>
         )}

@@ -8,6 +8,7 @@ import type {
   EventEditorState,
   EventSoundId,
   CellActionType,
+  EventTiming,
 } from '@/types/cellEvents';
 import {
   createSoundEvent,
@@ -53,7 +54,7 @@ export interface UseCellEventsReturn {
     clearCheckpoint: () => void;
 
     // Event execution
-    executeEventsAtPosition: (position: number, onPause?: () => void, onText?: (message: string, duration?: number) => void) => Promise<boolean>;
+    executeEventsAtPosition: (position: number, timing: EventTiming, onPause?: () => void, onText?: (message: string, duration?: number) => void) => Promise<boolean>;
 
     // Persistence
     saveToStorage: (patternId: string) => void;
@@ -270,16 +271,22 @@ export function useCellEvents(patternId?: string): UseCellEventsReturn {
 
   const executeEventsAtPosition = useCallback(async (
     position: number,
+    timing: EventTiming,
     onPause?: () => void,
     onText?: (message: string, duration?: number) => void
   ): Promise<boolean> => {
     const positionEvents = events[position] || [];
 
-    if (positionEvents.length === 0) {
-      return true; // No events, continue normally
+    // Filter events by timing (default to 'before' for events without timing set)
+    const eventsToExecute = positionEvents.filter(
+      event => (event.timing || 'before') === timing
+    );
+
+    if (eventsToExecute.length === 0) {
+      return true; // No events for this timing, continue normally
     }
 
-    for (const event of positionEvents) {
+    for (const event of eventsToExecute) {
       switch (event.type) {
         case 'sound':
           await playEventSound(event.soundId, 'uk');

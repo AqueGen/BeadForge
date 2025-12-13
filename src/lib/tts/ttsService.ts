@@ -271,11 +271,14 @@ function getColorKeyFromTranslation(translatedName: string, language: TTSLanguag
   return null;
 }
 
+/** Event timing type */
+export type EventTimingType = 'before' | 'after';
+
 /**
  * Event execution handler type
  * Returns true to continue, false to pause TTS
  */
-export type EventExecutionHandler = (position: number) => Promise<boolean>;
+export type EventExecutionHandler = (position: number, timing: EventTimingType) => Promise<boolean>;
 
 /**
  * Checkpoint save handler type
@@ -793,21 +796,35 @@ export class TTSController {
     // Execute cell events BEFORE voicing (if handler is set)
     if (this.onExecuteEvents) {
       try {
-        const shouldContinue = await this.onExecuteEvents(position);
+        const shouldContinue = await this.onExecuteEvents(position, 'before');
         if (!shouldContinue) {
           // Event requested pause (e.g., pause action)
           this.pause();
           return;
         }
       } catch (error) {
-        console.warn('[TTS] Error executing events at position', position, error);
+        console.warn('[TTS] Error executing BEFORE events at position', position, error);
       }
     }
 
     this.onPositionChange?.(position, colorName, groupCount);
 
     // Handle auto mode with next after playback
-    const handlePlaybackComplete = () => {
+    const handlePlaybackComplete = async () => {
+      // Execute cell events AFTER voicing (if handler is set)
+      if (this.onExecuteEvents) {
+        try {
+          const shouldContinue = await this.onExecuteEvents(position, 'after');
+          if (!shouldContinue) {
+            // Event requested pause (e.g., pause action after voicing)
+            this.pause();
+            return;
+          }
+        } catch (error) {
+          console.warn('[TTS] Error executing AFTER events at position', position, error);
+        }
+      }
+
       if (this.settings.mode === 'auto' && this.isPlaying) {
         this.currentIndex++;
         // Add pause between colors
