@@ -252,13 +252,9 @@ export function getIndividualText(item: TTSBeadItem): string {
 
 /**
  * Generate text for grouped beads
+ * Always includes the count for consistency (even for count === 1)
  */
 export function getGroupedText(item: TTSGroupedItem, _language: TTSLanguage): string {
-  if (item.count === 1) {
-    return item.colorName;
-  }
-
-  // Different number formats for different languages
   return `${item.colorName} ${item.count}`;
 }
 
@@ -624,10 +620,10 @@ export class TTSController {
         }
       }
 
-      // For grouped mode with count > 1, also play the number
+      // For grouped mode, also play the number (including 1 for single-cell groups)
       if (this.settings.format === 'grouped') {
         const groupCount = this.getCurrentGroupCount();
-        if (groupCount > 1) {
+        if (groupCount >= 1) {
           // Small pause between color/modifiers and number
           await new Promise(resolve => setTimeout(resolve, 100));
 

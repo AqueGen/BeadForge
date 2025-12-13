@@ -380,7 +380,7 @@ function RLEView({
             }}
             title={`${item.count} × ${item.letter}`}
           >
-            {item.count > 1 ? item.count : ''}
+            {item.count}
           </div>
         );
       })}
